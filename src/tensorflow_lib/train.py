@@ -51,7 +51,9 @@ class TrainTensorflowModels(TensorflowModels):
                 self.training_op=self.training_op.minimize(loss,global_step=self.global_step)
             init=tf.global_variables_initializer()
             self.saver=tf.train.Saver()
-            with tf.Session() as sess:
+            config = tf.ConfigProto()
+            config.gpu_options.allow_growth = True
+            with tf.Session(config=config) as sess:
                 train_writer = tf.summary.FileWriter(self.ckpt_dir + '/train',
                                       sess.graph)
                 test_writer = tf.summary.FileWriter(self.ckpt_dir + '/test')
