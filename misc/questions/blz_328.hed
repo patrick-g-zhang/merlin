@@ -20,7 +20,7 @@ QS "C-Front_Vowel"			{-i:+, -I+,	-y:+, -e+, -E:+, -E+,-eo+, -oe+}
 QS "C-Central_Vowel"		{-a+, -a:+,-ə+}
 QS "C-Back_Vowel"			{-u:+, -o+, -O:+, -U+}
 QS "C-Close_Vowel"			{-i:+, -y:+, -u:+, -I+, -U+}
-QS "C-Mid_Vowel"			{-e+, -E:+ , -E+,-eo+ ,-oe+	,-o+ ,-O:+,,-ə+}
+QS "C-Mid_Vowel"			{-e+, -E:+ , -E+,-eo+ ,-oe+	,-o+ ,-O:+,-ə+}
 QS "C-Open_Vowel"			{-a+, -a:+}
 QS "C-p"					{-p+}
 QS "C-p_h"					{-p_h+}

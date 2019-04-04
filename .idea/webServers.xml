@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="524e5a73-48b2-4c3a-9dbd-357e2d2db0b5" name="dspM" url="http://137.189.34.16">
+        <fileTransfer host="137.189.34.16" port="10622" rootFolder="/home/gyzhang" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="10622" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
