@@ -77,6 +77,7 @@ def load_covariance(var_file_dict, out_dimension_dict):
     return  var
 
 def main_function(cfg):
+    # file_paths are set in configuration file
     file_paths = FilePaths(cfg)
     # get a logger for this main function
     logger = logging.getLogger("main")
@@ -117,6 +118,7 @@ def main_function(cfg):
     model_dir = file_paths.model_dir
     gen_dir   = file_paths.gen_dir
 
+
     in_file_list_dict = {}
 
     for feature_name in list(cfg.in_dir_dict.keys()):
@@ -134,7 +136,7 @@ def main_function(cfg):
 
     assert cfg.label_style == 'HTS', 'Only HTS-style labels are now supported as input to Merlin'
 
-
+    # this class is for hts label style normalization and adding frame features also means add duration information
     label_normaliser = HTSLabelNormalisation(question_file_name=cfg.question_file_name, add_frame_features=cfg.add_frame_features, subphone_feats=cfg.subphone_feats)
     add_feat_dim = sum(cfg.additional_features.values())
     lab_dim = label_normaliser.dimension + add_feat_dim + cfg.appended_input_dim
@@ -167,7 +169,8 @@ def main_function(cfg):
     test_id_list = file_paths.test_id_list
     if cfg.NORMLAB:
         # simple HTS labels
-    
+        # in_label_align_file_list is set in configuration file
+        pdb.set_trace()
         logger.info('preparing label data (input) using standard HTS style labels')
         label_normaliser.perform_normalisation(in_label_align_file_list, binary_label_file_list, label_type=cfg.label_type, state_number=cfg.state_number)
 
@@ -198,6 +201,7 @@ def main_function(cfg):
             min_max_normaliser.find_min_max_values(nn_label_file_list[0:cfg.train_file_number])
 
         ### enforce silence such that the normalization runs without removing silence: only for final synthesis
+        ## this step is interesting because it add silence here
         if cfg.GenTestList and cfg.enforce_silence:
             min_max_normaliser.normalise_data(binary_label_file_list, nn_label_norm_file_list)
         else:
@@ -451,8 +455,7 @@ def main_function(cfg):
     ### generate parameters from DNN
     ### modified generate all the labels I want to see the error in training set 
     # gen_file_id_list = file_id_list[cfg.train_file_number:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
-    # we choose 20 utterances of training set to regenerate to compute training MCD etc.
-    pdb.set_trace()
+    # we choose 20 utterances of training set to regenerate to compute training MCD etc
     gen_file_id_list = file_id_list[cfg.train_file_number-20:cfg.train_file_number + cfg.valid_file_number + cfg.test_file_number]
     test_x_file_list  = nn_label_norm_file_list[cfg.train_file_number:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
     if cfg.GenTestList:
@@ -477,6 +480,7 @@ def main_function(cfg):
         cmp_min_vector = cmp_min_max[0, ]
         cmp_max_vector = cmp_min_max[1, ]
 
+        pdb.set_trace()
         if cfg.output_feature_normalisation == 'MVN':
             denormaliser = MeanVarianceNorm(feature_dimension = cfg.cmp_dim)
             denormaliser.feature_denormalisation(gen_file_list, gen_file_list, cmp_min_vector, cmp_max_vector)
@@ -661,6 +665,7 @@ if __name__ == '__main__':
     # these things should be done even before trying to parse the command line
     # create a configuration instance
     # and get a short name for this instance
+    pdb.set_trace()
     cfg=configuration.cfg
     # set up logging to use our custom class
     logging.setLoggerClass(LoggerPlotter)
