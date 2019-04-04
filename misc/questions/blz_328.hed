@@ -1,10 +1,10 @@
-QS "C-Onset"				{ -p+,-p_h+,-m+,-f+,-t+,-t_h+,-n+,-l+,-k+,-k_h+,-ts+,-ts_h+,-s+,-x+,-tʂ+, -tʂ_h_h+, -ʂ+, -tɕ_h+,-tɕ+, -ɕ+, -x+, -h+, -k_w+,-k_w_h+, -j+}
+QS "C-Onset"				{ -p+,-p_h+,-m+,-f+,-t+,-t_h+,-n+,-l+,-k+,-k_h+,-ts+,-ts_h+,-s+,-x+,-tʂ+, -tʂ_h+, -ʂ+, -tɕ_h+,-tɕ+, -ɕ+, -x+, -h+, -j+}
 QS "C-Nucleus"              {-a+,-E+, -e+, -i:+, -I+, -o+, -u:+, -U+, -oe+, -y:+, -ə+}
 QS "C-Coda"					{-N+,-ɚ+,-m+,-n+}
 QS "C-silences"				{-sil+}
 QS "C-Stop"					{-p+, -t+, -p_h+, -t_h+, -k_h+, -k+}
 QS "C-Affricate"			{-ts+, -ts_h+,-tʂ+, -tʂ_h+,-tɕ_h+,-tɕ+}
-QS "C-Aspirated_Stop"		{-p_h+,	-t_h+,	-k_h+,	-k_h_w+}
+QS "C-Aspirated_Stop"		{-p_h+,	-t_h+,	-k_h+}
 QS "C-Plain_Stop"			{-p+, -t+, -k+, -k_w+}
 QS "C-Aspirated_Affricate"	{-ts_h+,-tʂ_h+,-tɕ_h+}
 QS "C-Plain_Affricate"		{-ts+,-tʂ+, -tɕ+}
