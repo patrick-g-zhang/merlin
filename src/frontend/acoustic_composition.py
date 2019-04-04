@@ -109,7 +109,7 @@ class   AcousticComposition(AcousticBase):
                 dim_index = dim_index+in_feature_dim
 
                 if self.compute_dynamic[data_stream_name]:
-
+                    #
                     delta_features = self.compute_dynamic_matrix(features, self.delta_win, frame_number, in_feature_dim)
                     acc_features   = self.compute_dynamic_matrix(features, self.acc_win, frame_number, in_feature_dim)
 
@@ -156,10 +156,13 @@ if __name__ == '__main__':
                            'bap' : 75}
 
     in_file_list_dict = {}
-    in_file_list_dict['mgc'] = ['/afs/inf.ed.ac.uk/group/project/dnn_tts/data/nick/mgc/herald_001.mgc', '/afs/inf.ed.ac.uk/group/project/dnn_tts/data/nick/mgc/herald_002.mgc']
-    in_file_list_dict['lf0'] = ['/afs/inf.ed.ac.uk/group/project/dnn_tts/data/nick/lf0/herald_001.lf0', '/afs/inf.ed.ac.uk/group/project/dnn_tts/data/nick/lf0/herald_002.lf0']
-    in_file_list_dict['bap'] = ['/afs/inf.ed.ac.uk/group/project/dnn_tts/data/nick/bap/herald_001.bap', '/afs/inf.ed.ac.uk/group/project/dnn_tts/data/nick/bap/herald_002.bap']
+    mgc_data_dir = "/home/patrick/projects/merlin/egs/blz/s1/experiments/blz/acoustic_model/data/mgc"
+    lf0_data_dir = "/home/patrick/projects/merlin/egs/blz/s1/experiments/blz/acoustic_model/data/lf0"
+    bap_data_dir = "/home/patrick/projects/merlin/egs/blz/s1/experiments/blz/acoustic_model/data/bap"
+    in_file_list_dict['mgc'] = [os.path.join(mgc_data_dir, '100001.mgc'), os.path.join(mgc_data_dir, '100001.mgc')]
+    in_file_list_dict['lf0'] = [os.path.join(lf0_data_dir, '100002.lf0'), os.path.join(lf0_data_dir, '100002.lf0')]
+    in_file_list_dict['bap'] = [os.path.join(bap_data_dir, '100003.bap'), os.path.join(bap_data_dir, '100002.bap')]
 
-    out_file_list = ['/afs/inf.ed.ac.uk/group/project/dnn_tts/herald_001.cmp', '/afs/inf.ed.ac.uk/group/project/dnn_tts/herald_002.cmp']
+    out_file_list = ['~/100001.cmp', '~/100002.cmp']
 
     acoustic_cmper.prepare_nn_data(in_file_list_dict, out_file_list, in_dimension_dict, out_dimension_dict)

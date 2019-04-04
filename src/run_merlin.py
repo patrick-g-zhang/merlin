@@ -242,6 +242,7 @@ def main_function(cfg):
             lf0_file_list = file_paths.get_lf0_file_list()
             acoustic_worker.make_equal_frames(dur_file_list, lf0_file_list, cfg.in_dimension_dict)
 
+        # generate inter_moudle nn_mgc_lf0_vuv_bap_187 folder which are *.cmp files
         acoustic_worker.prepare_nn_data(in_file_list_dict, nn_cmp_file_list, cfg.in_dimension_dict, cfg.out_dimension_dict)
 
         if cfg.remove_silence_using_binary_labels:
@@ -257,6 +258,7 @@ def main_function(cfg):
             trim_silence(nn_cmp_file_list, nn_cmp_file_list, cfg.cmp_dim,
                                 binary_label_file_list, lab_dim, silence_feature)
 
+        # we only use this function. we remove silence part with respect to label files and save to itself.
         elif cfg.remove_silence_using_hts_labels: 
             ## back off to previous method using HTS labels:
             remover = SilenceRemover(n_cmp = cfg.cmp_dim, silence_pattern = cfg.silence_pattern, label_type=cfg.label_type, remove_frame_features = cfg.add_frame_features, subphone_feats = cfg.subphone_feats)
@@ -441,6 +443,7 @@ def main_function(cfg):
                 raise
 
         gen_file_id_list = file_id_list[cfg.train_file_number-20:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
+        pdb.set_trace()
         test_x_file_list = nn_label_norm_file_list[0:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
 
         gen_file_list = prepare_file_path_list(gen_file_id_list, gen_dir, cfg.cmp_ext)
@@ -448,6 +451,8 @@ def main_function(cfg):
     ### generate parameters from DNN
     ### modified generate all the labels I want to see the error in training set 
     # gen_file_id_list = file_id_list[cfg.train_file_number:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
+    # we choose 20 utterances of training set to regenerate to compute training MCD etc.
+    pdb.set_trace()
     gen_file_id_list = file_id_list[cfg.train_file_number-20:cfg.train_file_number + cfg.valid_file_number + cfg.test_file_number]
     test_x_file_list  = nn_label_norm_file_list[cfg.train_file_number:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
     if cfg.GenTestList:
