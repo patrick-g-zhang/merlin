@@ -1,17 +1,17 @@
-QS "C-Onset"				{ -p+,-p_h+,-m+,-f+,-t+,-t_h+,-n+,-l+,-k+,-k_h+,-ts+,-ts_h+,-s+,-x+,-ʈʂ+, -ʈʂ_h+, -ʂ+, -tɕ_h+,-tɕ+, -ɕ+, -x+, -h+, -k_w+,-k_w_h+, -j+}
+QS "C-Onset"				{ -p+,-p_h+,-m+,-f+,-t+,-t_h+,-n+,-l+,-k+,-k_h+,-ts+,-ts_h+,-s+,-x+,-tʂ+, -tʂ_h_h+, -ʂ+, -tɕ_h+,-tɕ+, -ɕ+, -x+, -h+, -k_w+,-k_w_h+, -j+}
 QS "C-Nucleus"              {-a+,-E+, -e+, -i:+, -I+, -o+, -u:+, -U+, -oe+, -y:+, -ə+}
 QS "C-Coda"					{-N+,-ɚ+,-m+,-n+}
 QS "C-silences"				{-sil+}
 QS "C-Stop"					{-p+, -t+, -p_h+, -t_h+, -k_h+, -k+}
-QS "C-Affricate"			{-ts+, -ts_h+,-ʈʂ+, -ʈʂ_h+,-tɕ_h+,-tɕ+}
+QS "C-Affricate"			{-ts+, -ts_h+,-tʂ+, -tʂ_h+,-tɕ_h+,-tɕ+}
 QS "C-Aspirated_Stop"		{-p_h+,	-t_h+,	-k_h+,	-k_h_w+}
 QS "C-Plain_Stop"			{-p+, -t+, -k+, -k_w+}
-QS "C-Aspirated_Affricate"	{-ts_h+,-ʈʂ_h+,-tɕ_h+}
-QS "C-Plain_Affricate"		{-ts+,-ʈʂ+, -tɕ+}
+QS "C-Aspirated_Affricate"	{-ts_h+,-tʂ_h+,-tɕ_h+}
+QS "C-Plain_Affricate"		{-ts+,-tʂ+, -tɕ+}
 QS "C-Nasal"				{-m+,-n+,-N+}
 QS "C-Fricative"			{-f+,-s+,-ʂ+,-x+}
 QS "C-Approximant"			{-l+,-j+,-w+}
-QS "C-Retroflex"			{-ʈʂ_h+,-ʈʂ_h+,-ʂ+}
+QS "C-Retroflex"			{-tʂ_h+,-tʂ_h+,-ʂ+}
 QS "C-Labial"				{-m+, -p+, -p_h+, -f+}
 QS "C-Dental"				{-n+, -t+, -t_h+, -l+, -ts+, -ts_h+, -s+}
 QS "C-AlveoloPalatal"		{-j+,-tɕ_h+,-tɕ+, -ɕ+ }
@@ -33,8 +33,8 @@ QS "C-l"					{-l+}
 QS "C-k"					{-k+}
 QS "C-k_h"					{-k_h+}
 QS "C-N"					{-N+}
-QS "C-ʈʂ"					{-ʈʂ+}
-QS "C-ʈʂ_h"					{-ʈʂ_h+}
+QS "C-tʂ"					{-tʂ+}
+QS "C-tʂ_h"					{-tʂ_h+}
 QS "C-ʂ"					{-ʂ+}
 QS "C-tɕ_h"					{-tɕ_h+}
 QS "C-tɕ"					{-tɕ+}
@@ -68,8 +68,8 @@ QS "LL-l"					{l^}
 QS "LL-k"					{k^}
 QS "LL-k_h"					{k_h^}
 QS "LL-N"					{N^}
-QS "LL-ʈʂ"					{ʈʂ^}
-QS "LL-ʈʂ_h"				{ʈʂ_h^}
+QS "LL-tʂ"					{tʂ^}
+QS "LL-tʂ_h"				{tʂ_h^}
 QS "LL-ʂ"					{ʂ^}
 QS "LL-tɕ_h"				{tɕ_h^}
 QS "LL-tɕ"					{tɕ^}
@@ -103,8 +103,8 @@ QS "L-l"					{^l-}
 QS "L-k"					{^k-}
 QS "L-k_h"					{^k_h-}
 QS "L-N"					{^N-}
-QS "L-ʈʂ"					{^ʈʂ-}
-QS "L-ʈʂ_h"					{^ʈʂ_h-}
+QS "L-tʂ"					{^tʂ-}
+QS "L-tʂ_h"					{^tʂ_h-}
 QS "L-ʂ"					{^ʂ-}
 QS "L-x"					{^x-}
 QS "L-tɕ_h"					{^tɕ_h-}
@@ -138,8 +138,8 @@ QS "R-l"					{+l=}
 QS "R-k"					{+k=}
 QS "R-k_h"					{+k_h=}
 QS "R-N"					{+N=}
-QS "R-ʈʂ"					{+ʈʂ=}
-QS "R-ʈʂ_h"					{+ʈʂ_h=}
+QS "R-tʂ"					{+tʂ=}
+QS "R-tʂ_h"					{+tʂ_h=}
 QS "R-ʂ"					{+ʂ=}
 QS "R-tɕ_h"					{+tɕ_h=}
 QS "R-tɕ"					{+tɕ=}
@@ -173,8 +173,8 @@ QS "RR-l"					{=l@}
 QS "RR-k"					{=k@}
 QS "RR-k_h"					{=k_h@}
 QS "RR-N"					{=N@}
-QS "RR-ʈʂ"					{=ʈʂ@}
-QS "RR-ʈʂ_h"				{=ʈʂ_h@}
+QS "RR-tʂ"					{=tʂ@}
+QS "RR-tʂ_h"				{=tʂ_h@}
 QS "RR-ʂ"					{=ʂ@}
 QS "RR-tɕ_h"				{=tɕ_h@}
 QS "RR-tɕ"					{=tɕ@}
