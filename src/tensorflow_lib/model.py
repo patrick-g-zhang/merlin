@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.layers import fully_connected, batch_norm
 from tensorflow.contrib.layers import dropout
+import tensorflow.contrib.slim as slim
 from tensorflow.contrib.rnn import MultiRNNCell,RNNCell, BasicRNNCell, BasicLSTMCell,GRUCell, LayerNormBasicLSTMCell, DropoutWrapper,\
 ResidualWrapper
 from tensorflow.python.ops import rnn_cell_impl
@@ -33,7 +34,7 @@ class TensorflowModels(object):
         self.optimizer     = optimizer
         self.graph=tf.Graph()
         self.initial_learning_rate = initial_learning_rate
-
+        self.learning_rate = initial_learning_rate
     def define_feedforward_model(self):
         """
             the basic deep feedforward dnn model
@@ -45,7 +46,6 @@ class TensorflowModels(object):
             # self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
             #                                global_step=self.global_step,
             #                                decay_steps=10000,decay_rate=0.97)
-            self.learning_rate = 0.0001
             is_training_batch=tf.placeholder(tf.bool,shape=(),name="is_training_batch")
             # bn_params={"is_training":is_training_batch,"decay":0.99,"updates_collections":None}
             g.add_to_collection("is_training_batch",is_training_batch)
@@ -65,7 +65,9 @@ class TensorflowModels(object):
                     if self.dropout_rate!=0.0:
                         last_layer=layer_list[-1]
                         if self.hidden_layer_type[i]=="tanh":
-                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.tanh)
+                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=None)
+                            new_layer = tf.contrib.layers.batch_norm(new_layer,is_training=is_training_batch)
+                            new_layer = tf.nn.tanh(new_layer)
                         if self.hidden_layer_type[i]=="sigmoid":
                             new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.sigmoid)
                         if self.hidden_layer_type[i]=="relu":
@@ -75,9 +77,12 @@ class TensorflowModels(object):
                         new_layer_drop=dropout(new_layer,self.dropout_rate,is_training=is_training_drop)
                         layer_list.append(new_layer_drop)
                     else:
+                        # pdb.set_trace()
                         last_layer=layer_list[-1]
                         if self.hidden_layer_type[i]=="tanh":
-                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.tanh)
+                            new_layer = fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=None)
+                            # new_layer = tf.contrib.layers.batch_norm(new_layer, is_training=is_training_batch)
+                            new_layer = tf.nn.tanh(new_layer)
                         if self.hidden_layer_type[i]=="sigmoid":
                             new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.sigmoid)
                         if self.hidden_layer_type[i]=="relu":

@@ -170,7 +170,7 @@ def main_function(cfg):
     if cfg.NORMLAB:
         # simple HTS labels
         # in_label_align_file_list is set in configuration file
-        pdb.set_trace()
+        # pdb.set_trace()
         logger.info('preparing label data (input) using standard HTS style labels')
         label_normaliser.perform_normalisation(in_label_align_file_list, binary_label_file_list, label_type=cfg.label_type, state_number=cfg.state_number)
 
@@ -447,7 +447,7 @@ def main_function(cfg):
                 raise
 
         gen_file_id_list = file_id_list[cfg.train_file_number-20:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
-        pdb.set_trace()
+        # pdb.set_trace()
         test_x_file_list = nn_label_norm_file_list[0:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
 
         gen_file_list = prepare_file_path_list(gen_file_id_list, gen_dir, cfg.cmp_ext)
@@ -480,7 +480,7 @@ def main_function(cfg):
         cmp_min_vector = cmp_min_max[0, ]
         cmp_max_vector = cmp_min_max[1, ]
 
-        pdb.set_trace()
+        # pdb.set_trace()
         if cfg.output_feature_normalisation == 'MVN':
             denormaliser = MeanVarianceNorm(feature_dimension = cfg.cmp_dim)
             denormaliser.feature_denormalisation(gen_file_list, gen_file_list, cmp_min_vector, cmp_max_vector)
@@ -665,7 +665,6 @@ if __name__ == '__main__':
     # these things should be done even before trying to parse the command line
     # create a configuration instance
     # and get a short name for this instance
-    pdb.set_trace()
     cfg=configuration.cfg
     # set up logging to use our custom class
     logging.setLoggerClass(LoggerPlotter)

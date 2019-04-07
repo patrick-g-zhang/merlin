@@ -18,7 +18,7 @@ class TensorflowClass(object):
         ###################################################
         ########## User configurable variables ############
         ###################################################
-
+        # pdb.set_trace()
         inp_feat_dir = cfg.inp_feat_dir
         out_feat_dir = cfg.out_feat_dir
         pred_feat_dir = cfg.pred_feat_dir
@@ -61,6 +61,7 @@ class TensorflowClass(object):
         self.dropout_rate = cfg.dropout_rate
         self.num_of_epochs = cfg.num_of_epochs
 
+        self.learning_rate = cfg.learning_rate
         ### Define the work directory###
         self.model_dir = cfg.model_dir
 
@@ -122,7 +123,8 @@ class TensorflowClass(object):
                                                            self.hidden_layer_type, self.model_dir,
                                                            output_type=self.output_layer_type,
                                                            dropout_rate=self.dropout_rate,
-                                                           loss_function=self.loss_function, optimizer=self.optimizer)
+                                                           loss_function=self.loss_function, optimizer=self.optimizer,
+                                                           learning_rate=self.learning_rate)
         else:
             self.encoder_decoder_models = Train_Encoder_Decoder_Models(self.inp_dim, self.hidden_layer_size,
                                                                        self.out_dim, self.hidden_layer_type,

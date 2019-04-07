@@ -10,9 +10,9 @@ import logging
 import random
 
 class TrainTensorflowModels(TensorflowModels):
-    def __init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, model_dir,output_type='linear', dropout_rate=0.0, loss_function='mse', optimizer='adam', rnn_params=None):
+    def __init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, model_dir,output_type='linear', dropout_rate=0.0, loss_function='mse', optimizer='adam', learning_rate=0.01, rnn_params=None):
 
-        TensorflowModels.__init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, output_type, dropout_rate, loss_function, optimizer)
+        TensorflowModels.__init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, output_type, dropout_rate, loss_function, optimizer, learning_rate)
 
         #### TODO: Find a good way to pass below params ####
         self.ckpt_dir = model_dir
@@ -65,6 +65,7 @@ class TrainTensorflowModels(TensorflowModels):
                     L_test=0
                     overall_training_loss=0
                     overall_test_loss=0
+                    pdb.set_trace()
                     for iteration in range(int(train_x.shape[0]/batch_size)+1):
                         if (iteration+1)*batch_size>train_x.shape[0]:
                             x_batch,y_batch=train_x[iteration*batch_size:],train_y[iteration*batch_size:]
@@ -76,13 +77,13 @@ class TrainTensorflowModels(TensorflowModels):
                             x_batch,y_batch=train_x[iteration*batch_size:(iteration+1)*batch_size,], train_y[iteration*batch_size:(iteration+1)*batch_size]
                             L_training+=1
                         if self.dropout_rate!=0.0:
-                            if iteration%10==0:
+                            if iteration%10==1:
                                 test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_drop:False,is_training_batch:False})
                                 test_writer.add_summary(summary, epoch*batch_num+iteration)
                             _,batch_loss, summary=sess.run([self.training_op,loss,merged],feed_dict={input_layer:x_batch,output_data:y_batch,is_training_drop:True,is_training_batch:True})
                             train_writer.add_summary(summary,epoch*batch_num+iteration)
                         else:
-                            if iteration%10==0:
+                            if iteration%10==1:
                                 test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_batch:False})
                                 overall_test_loss+=test_loss
                                 L_test+=1
