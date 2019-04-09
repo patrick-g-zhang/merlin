@@ -54,6 +54,13 @@ class TrainTensorflowModels(TensorflowModels):
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             with tf.Session(config=config) as sess:
+                new_saver = tf.train.import_meta_graph(os.path.join(self.ckpt_dir, "mymodel.ckpt.meta"))
+                print("loading the model parameters...")
+                output_layer = tf.get_collection("output_layer")[0]
+                input_layer = tf.get_collection("input_layer")[0]
+                new_saver.restore(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
+                print("The model parameters are successfully restored")
+
                 train_writer = tf.summary.FileWriter(self.ckpt_dir + '/train',
                                       sess.graph)
                 test_writer = tf.summary.FileWriter(self.ckpt_dir + '/test')
@@ -65,7 +72,7 @@ class TrainTensorflowModels(TensorflowModels):
                     L_test=0
                     overall_training_loss=0
                     overall_test_loss=0
-                    pdb.set_trace()
+                    # pdb.set_trace()
                     for iteration in range(int(train_x.shape[0]/batch_size)+1):
                         if (iteration+1)*batch_size>train_x.shape[0]:
                             x_batch,y_batch=train_x[iteration*batch_size:],train_y[iteration*batch_size:]
@@ -84,6 +91,7 @@ class TrainTensorflowModels(TensorflowModels):
                             train_writer.add_summary(summary,epoch*batch_num+iteration)
                         else:
                             if iteration%10==1:
+                                learning_rate = sess.run(self.learning_rate)
                                 test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_batch:False})
                                 overall_test_loss+=test_loss
                                 L_test+=1
@@ -94,7 +102,7 @@ class TrainTensorflowModels(TensorflowModels):
                    # logging.info()
                    # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
                      #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
-                    print("Epoch ",epoch+1, "Finishes","learning rate", self.learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
+                    print("Epoch ",epoch+1, "Finishes","learning rate", learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
                 self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
                 print("The model parameters are saved")
 
@@ -360,11 +368,11 @@ class TrainTensorflowModels(TensorflowModels):
         """
             predict the results with given model
         """
-
+        # pdb.set_trace()
         io_funcs = BinaryIOCollection()
         test_id_list = list(test_x)
-        test_id_list.sort()
-        gen_test_file_list.sort()
+        # test_id_list.sort()
+        # gen_test_file_list.sort()
         test_file_number = len(test_id_list)
 
         print("generating features on held-out test data...")
