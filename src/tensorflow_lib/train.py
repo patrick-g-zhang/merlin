@@ -29,41 +29,46 @@ class TrainTensorflowModels(TensorflowModels):
                 tf.summary.histogram(dim_summary_name, var[:,dim])
 
     def train_feedforward_model(self, train_x, train_y, valid_x, valid_y, batch_size=256, num_of_epochs=10, shuffle_data=True):
-        # pdb.set_trace()
+        use_model=False
         logger = logging.getLogger("train feedforward model")
         seed=12345
         np.random.seed(seed)
         print(train_x.shape)
         with self.graph.as_default() as g:
-            output_data=tf.placeholder(dtype=tf.float32,shape=(None,self.n_out),name="output_data")
-            input_layer=g.get_collection(name="input_layer")[0]
             is_training_batch=g.get_collection(name="is_training_batch")[0]
             if self.dropout_rate!=0.0:
                 is_training_drop=g.get_collection(name="is_training_drop")[0]
-            with tf.name_scope("loss"):
-               output_layer=g.get_collection(name="output_layer")[0]
-               loss = 0.5*tf.reduce_sum(tf.reduce_mean(tf.square(output_layer-output_data), axis=0),name="loss")
-               #loss=tf.reduce_mean(tf.square(output_layer-output_data),name="loss")
-            tf.summary.scalar('mean_loss', loss)
-            tf.summary.scalar('learning_rate', self.learning_rate)
-            merged = tf.summary.merge_all()
-            with tf.name_scope("train"):
-                self.training_op=self.training_op.minimize(loss,global_step=self.global_step)
-            init=tf.global_variables_initializer()
             self.saver=tf.train.Saver()
             config = tf.ConfigProto()
             config.gpu_options.allow_growth = True
             with tf.Session(config=config) as sess:
-                new_saver = tf.train.import_meta_graph(os.path.join(self.ckpt_dir, "mymodel.ckpt.meta"))
-                print("loading the model parameters...")
-                output_layer = tf.get_collection("output_layer")[0]
-                input_layer = tf.get_collection("input_layer")[0]
-                new_saver.restore(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
-                print("The model parameters are successfully restored")
+                # pdb.set_trace()
+                # if use_model:
+                #     new_saver = tf.train.import_meta_graph(os.path.join(self.ckpt_dir, "mymodel.ckpt.meta"))
+                #     print("loading the model parameters...")
+                #     output_layer = tf.get_collection("output_layer")[0]
+                #     input_layer = tf.get_collection("input_layer")[0]
+                #     new_saver.restore(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
+                #     print("The model parameters are successfully restored")
+                # else:
+                input_layer=g.get_collection(name="input_layer")[0]
+                output_layer = g.get_collection(name="output_layer")[0]
+                output_data = tf.placeholder(dtype=tf.float32, shape=(None, self.n_out), name="output_data")
+
+                with tf.name_scope("loss"):
+                    loss = 0.5 * tf.reduce_sum(tf.reduce_mean(tf.square(output_layer - output_data), axis=0),name="loss")
+                    # loss=tf.reduce_mean(tf.square(output_layer-output_data),name="loss")
+                tf.summary.scalar('mean_loss', loss)
+                tf.summary.scalar('learning_rate', self.learning_rate)
+                merged = tf.summary.merge_all()
+                with tf.name_scope("train"):
+                    self.training_op = self.training_op.minimize(loss, global_step=self.global_step)
 
                 train_writer = tf.summary.FileWriter(self.ckpt_dir + '/train',
                                       sess.graph)
                 test_writer = tf.summary.FileWriter(self.ckpt_dir + '/test')
+                init = tf.global_variables_initializer()
+
                 init.run()
                 batch_num = int(train_x.shape[0]/batch_size)+1
                 # summary_writer=tf.summary.FileWriter(os.path.join(self.ckpt_dir,"losslog"),sess.graph)
@@ -72,7 +77,6 @@ class TrainTensorflowModels(TensorflowModels):
                     L_test=0
                     overall_training_loss=0
                     overall_test_loss=0
-                    # pdb.set_trace()
                     for iteration in range(int(train_x.shape[0]/batch_size)+1):
                         if (iteration+1)*batch_size>train_x.shape[0]:
                             x_batch,y_batch=train_x[iteration*batch_size:],train_y[iteration*batch_size:]
@@ -91,7 +95,6 @@ class TrainTensorflowModels(TensorflowModels):
                             train_writer.add_summary(summary,epoch*batch_num+iteration)
                         else:
                             if iteration%10==1:
-                                learning_rate = sess.run(self.learning_rate)
                                 test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_batch:False})
                                 overall_test_loss+=test_loss
                                 L_test+=1
@@ -102,9 +105,10 @@ class TrainTensorflowModels(TensorflowModels):
                    # logging.info()
                    # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
                      #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
+                    learning_rate = sess.run(self.learning_rate)
                     print("Epoch ",epoch+1, "Finishes","learning rate", learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
-                self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
-                print("The model parameters are saved")
+                    self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
+                    print("The model parameters are saved")
 
     def train_feedforward_multitask_model(self, train_x, train_y,train_aux,batch_size=256, num_of_epochs=10, shuffle_data=True):
         seed=12345
@@ -184,7 +188,7 @@ class TrainTensorflowModels(TensorflowModels):
                     c1_iter = 0
                     c2_iter = 0
                     for iteration in range(batch_num_c1 + batch_num_c2-1):
-                        # choose which to feed 
+                        # choose which to feed
                         rand_num = random.randint(0,1)
                         # pdb.set_trace()
                         if ((rand_num == 0) & (c1_iter < batch_num_c1)) | ((c2_iter == batch_num_c2) & (c1_iter < batch_num_c1)):
@@ -192,7 +196,7 @@ class TrainTensorflowModels(TensorflowModels):
                             if (c1_iter+1)*batch_size > train_x_c1.shape[0]:
                                 x_batch, y_batch = train_x_c1[c1_iter*batch_size:], train_y_c1[c1_iter*batch_size:]
                             else:
-                                x_batch,y_batch=train_x_c1[c1_iter*batch_size:(c1_iter+1)*batch_size,], train_y_c1[c1_iter*batch_size:(c1_iter+1)*batch_size] 
+                                x_batch,y_batch=train_x_c1[c1_iter*batch_size:(c1_iter+1)*batch_size,], train_y_c1[c1_iter*batch_size:(c1_iter+1)*batch_size]
                             c1_iter+=1
                             if self.dropout_rate!=0.0:
                                 _,batch_loss_c1=sess.run([training_op_c1,loss_c1],feed_dict={input_layer:x_batch,output_data_c1:y_batch,is_training_drop:True,is_training_batch:True})
@@ -203,14 +207,14 @@ class TrainTensorflowModels(TensorflowModels):
                             if (c2_iter+1)*batch_size > train_x_c2.shape[0]:
                                 x_batch, y_batch = train_x_c2[c2_iter*batch_size:], train_y_c2[c2_iter*batch_size:]
                             else:
-                                x_batch,y_batch=train_x_c2[c2_iter*batch_size:(c2_iter+1)*batch_size,], train_y_c2[c2_iter*batch_size:(c2_iter+1)*batch_size], 
+                                x_batch,y_batch=train_x_c2[c2_iter*batch_size:(c2_iter+1)*batch_size,], train_y_c2[c2_iter*batch_size:(c2_iter+1)*batch_size],
                             c2_iter+=1
                             if self.dropout_rate!=0.0:
                                 _,batch_loss_c2=sess.run([training_op_c2,loss_c2],feed_dict={input_layer:x_batch,output_data_c2:y_batch,is_training_drop:True,is_training_batch:True})
                             else:
                                 _,batch_loss_c2=sess.run([training_op_c2,loss_c2],feed_dict={input_layer:x_batch,output_data_c2:y_batch,is_training_batch:True})
                         else:
-                            continue 
+                            continue
                     print("Epoch ",epoch+1, "Finishes","Training loss c1:",batch_loss_c1, "Training loss c2",batch_loss_c2)
                     print("corpus 1 iterations", c1_iter, "corpus 2 iterations", c2_iter, "batch num c1", batch_num_c1, "batch_num_c2",batch_num_c2)
                 self.saver.save(sess,os.path.join(self.ckpt_dir,"multitask_dnn.ckpt"))
@@ -368,7 +372,7 @@ class TrainTensorflowModels(TensorflowModels):
         """
             predict the results with given model
         """
-        # pdb.set_trace()
+
         io_funcs = BinaryIOCollection()
         test_id_list = list(test_x)
         # test_id_list.sort()
