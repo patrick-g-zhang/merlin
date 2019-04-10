@@ -72,7 +72,7 @@ class configuration(object):
 
         # load and parse the provided configFile, if provided
         if not configFile:
-            logger.warn('no user configuration file provided; using only built-in default settings')
+            logger.warning('no user configuration file provided; using only built-in default settings')
             return
 
         # load the config file
@@ -653,7 +653,9 @@ class configuration(object):
 
         ###need to control the order of the key?
         self.in_dir_dict  = {}          ##dimensions for each raw acoustic (output of NN) feature
+        # pdb.set_trace()
         self.out_dimension_dict = {}
+
         self.in_dimension_dict = {}
 
         self.private_hidden_sizes = []

@@ -43,9 +43,9 @@ class TensorflowModels(object):
         with self.graph.as_default() as g:
             #pdb.set_trace()
             self.global_step  = tf.Variable(0,trainable=False)
-            # self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
-            #                                global_step=self.global_step,
-            #                                decay_steps=10000,decay_rate=0.97)
+            self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
+                                           global_step=self.global_step,
+                                           decay_steps=5000,decay_rate=0.99)
             is_training_batch=tf.placeholder(tf.bool,shape=(),name="is_training_batch")
             # bn_params={"is_training":is_training_batch,"decay":0.99,"updates_collections":None}
             g.add_to_collection("is_training_batch",is_training_batch)
@@ -197,7 +197,7 @@ class TensorflowModels(object):
             global_step = tf.Variable(0, trainable=False)
             learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
                                                             global_step=global_step,
-                                                            decay_steps=200, decay_rate=0.97)
+                                                            decay_steps=50000, decay_rate=0.99)
 
             g.add_to_collection(name="utt_length",value=utt_length)
             g.add_to_collection(name="global_step",value=global_step)

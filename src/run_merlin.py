@@ -283,8 +283,7 @@ def main_function(cfg):
                 global_mean_vector, global_std_vector = normaliser.load_mean_std_values(norm_info_file)
             else:
                 ###calculate mean and std vectors on the training data, and apply on the whole dataset
-                global_mean_vector = normaliser.compute_mean(nn_cmp_file_list[0:cfg.train_file_number], 0, cfg.cmp_dim)
-                global_std_vector = normaliser.compute_std(nn_cmp_file_list[0:cfg.train_file_number], global_mean_vector, 0, cfg.cmp_dim)
+                global_mean_vector = normaliser.compute_mean(nn_cmp_file_list[0:cfg.train_file_number], global_mean_vector, 0, cfg.cmp_dim)
                 # for hmpd vocoder we don't need to normalize the 
                 # pdd values
                 if cfg.vocoder_type == 'hmpd':
@@ -666,6 +665,7 @@ if __name__ == '__main__':
     # create a configuration instance
     # and get a short name for this instance
     cfg=configuration.cfg
+    pdb.set_trace()
     # set up logging to use our custom class
     logging.setLoggerClass(LoggerPlotter)
     # get a logger for this main function

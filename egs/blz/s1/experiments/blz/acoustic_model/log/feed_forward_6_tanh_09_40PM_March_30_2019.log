@@ -1,0 +1,4 @@
+2019-03-30 21:40:59,376     INFO           main: Input label dimension is 332
+2019-03-30 21:40:59,396     INFO           main: label dimension is 332
+2019-03-30 21:40:59,397     INFO           main: training DNN
+2019-03-30 21:40:59,397 CRITICAL           main: train_DNN threw an exception
