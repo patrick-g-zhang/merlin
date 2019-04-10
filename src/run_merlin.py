@@ -230,6 +230,7 @@ def main_function(cfg):
     ### make output acoustic data
     # pdb.set_trace()
     if cfg.MAKECMP:
+        # pdb.set_trace()
         logger.info('creating acoustic (output) features')
         delta_win = cfg.delta_win #[-0.5, 0.0, 0.5]
         acc_win = cfg.acc_win     #[1.0, -2.0, 1.0]
@@ -241,6 +242,7 @@ def main_function(cfg):
             nn_cmp_norm_file_list = prepare_file_path_list(test_id_list, nn_cmp_norm_dir, cfg.cmp_ext)
         
         acoustic_worker = AcousticComposition(delta_win = delta_win, acc_win = acc_win)
+        pdb.set_trace()
 
         if 'dur' in list(cfg.in_dir_dict.keys()) and cfg.AcousticModel:
             lf0_file_list = file_paths.get_lf0_file_list()
@@ -283,7 +285,8 @@ def main_function(cfg):
                 global_mean_vector, global_std_vector = normaliser.load_mean_std_values(norm_info_file)
             else:
                 ###calculate mean and std vectors on the training data, and apply on the whole dataset
-                global_mean_vector = normaliser.compute_mean(nn_cmp_file_list[0:cfg.train_file_number], global_mean_vector, 0, cfg.cmp_dim)
+                global_mean_vector = normaliser.compute_mean(nn_cmp_file_list[0:cfg.train_file_number], 0, cfg.cmp_dim)
+                global_std_vector = normaliser.compute_std(nn_cmp_file_list[0:cfg.train_file_number], global_mean_vector, 0, cfg.cmp_dim)
                 # for hmpd vocoder we don't need to normalize the 
                 # pdd values
                 if cfg.vocoder_type == 'hmpd':
@@ -482,6 +485,7 @@ def main_function(cfg):
         # pdb.set_trace()
         if cfg.output_feature_normalisation == 'MVN':
             denormaliser = MeanVarianceNorm(feature_dimension = cfg.cmp_dim)
+            pdb.set_trace()
             denormaliser.feature_denormalisation(gen_file_list, gen_file_list, cmp_min_vector, cmp_max_vector)
 
         if cfg.output_feature_normalisation == 'MINMAX':
@@ -665,7 +669,6 @@ if __name__ == '__main__':
     # create a configuration instance
     # and get a short name for this instance
     cfg=configuration.cfg
-    pdb.set_trace()
     # set up logging to use our custom class
     logging.setLoggerClass(LoggerPlotter)
     # get a logger for this main function
@@ -676,5 +679,6 @@ if __name__ == '__main__':
     config_file = sys.argv[1]
     config_file = os.path.abspath(config_file)
     cfg.configure(config_file)
+    # pdb.set_trace()
     main_function(cfg)
     sys.exit(0)

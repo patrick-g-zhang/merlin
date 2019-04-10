@@ -30,7 +30,6 @@ class   AcousticBase(object):
         CMP_DIY : mix of CMP and DIY data
     '''
     def prepare_nn_data(self, in_file_list_dict, out_file_list, in_dimension_dict, out_dimension_dict):
-        # pdb.set_trace()
         self.file_number = len(out_file_list)
 
         for data_stream_name in list(in_file_list_dict.keys()):
@@ -79,7 +78,7 @@ class   AcousticBase(object):
             self.out_dimension += out_dimension_dict[data_stream_name]
 
         ### merge the data: like the cmp file
-        pdb.set_trace()
+        # pdb.set_trace()
         self.prepare_data(in_file_list_dict, out_file_list, in_dimension_dict, out_dimension_dict)
 
     ### the real function to do the work

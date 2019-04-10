@@ -674,14 +674,21 @@ class configuration(object):
 #            stream_lr_ratio = 0.0
             if feature_name == 'mgc':
                 in_dimension  = self.mgc_dim
-                out_dimension = self.dmgc_dim
+                if not self.do_MLPG:
+                    out_dimension = self.mgc_dim
+                else:
+                    out_dimension = self.dmgc_dim
                 in_directory  = self.in_mgc_dir
 
 #                current_stream_hidden_size = self.stream_mgc_hidden_size
 #                current_stream_weight      = self.stream_weight_mgc
             elif feature_name == 'bap':
                 in_dimension = self.bap_dim
-                out_dimension = self.dbap_dim
+                if not self.do_MLPG:
+                    out_dimension = self.bap_dim
+                else:
+                    out_dimension = self.dbap_dim
+                # out_dimension = self.dbap_dim
                 in_directory  = self.in_bap_dir
 
             elif feature_name == 'lid':
@@ -691,7 +698,11 @@ class configuration(object):
 #                current_stream_weight      = self.stream_weight_bap
             elif feature_name == 'lf0':
                 in_dimension = self.lf0_dim
-                out_dimension = self.dlf0_dim
+                if not self.do_MLPG:
+                    out_dimension = self.lf0_dim
+                else:
+                    out_dimension = self.dlf0_dim
+
                 in_directory  = self.in_lf0_dir
                 if self.vocoder_type == 'MAGPHASE':
                     in_directory = self.in_acous_feats_dir

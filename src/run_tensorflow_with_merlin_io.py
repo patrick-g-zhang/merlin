@@ -208,6 +208,7 @@ class TensorflowClass(object):
     def test_tensorflow_model(self):
 
         #### load the data ####
+        # pdb.set_trace()
         print('preparing test_x from input feature files...')
         test_x, test_flen = data_utils.read_test_data_from_file_list(self.inp_test_file_list, self.inp_dim)
 
