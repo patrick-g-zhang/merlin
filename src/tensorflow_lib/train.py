@@ -60,7 +60,9 @@ class TrainTensorflowModels(TensorflowModels):
                     # loss=tf.reduce_mean(tf.square(output_layer-output_data),name="loss")
                 tf.summary.scalar('mean_loss', loss)
                 tf.summary.scalar('learning_rate', self.learning_rate)
+                epoch_average_loss = tf.placeholder(dtype=tf.float32,shape=None)
                 merged = tf.summary.merge_all()
+                epoch_average_loss_summary = tf.summary.scalar('epoch avergae loss', epoch_average_loss)
                 with tf.name_scope("train"):
                     self.training_op = self.training_op.minimize(loss, global_step=self.global_step)
 
@@ -106,6 +108,10 @@ class TrainTensorflowModels(TensorflowModels):
                    # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
                      #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
                     learning_rate = sess.run(self.learning_rate)
+                    train_epoch_loss = sess.run(epoch_average_loss_summary,feed_dict={epoch_average_loss:2*overall_training_loss/(L_training*187)})
+                    train_writer.add_summary(train_epoch_loss, epoch+1)
+                    test_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2*overall_test_loss/(187*L_test)})
+                    test_writer.add_summary(test_epoch_loss, epoch+1)
                     print("Epoch ",epoch+1, "Finishes","learning rate", learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
                     self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
                     print("The model parameters are saved")

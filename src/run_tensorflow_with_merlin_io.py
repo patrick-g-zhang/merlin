@@ -155,10 +155,17 @@ class TensorflowClass(object):
     def train_tensorflow_model(self):
         logging.getLogger("train model")
         print('preparing train_x, train_y from input and output feature files...')
+        # pdb.set_trace()
+        num_list = range(100)
+        # num_list = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,354]
+        # num_list = [0]
+        self.inp_train_file_list = list(self.inp_train_file_list[i] for i in num_list)
+        self.out_train_file_list = list(self.out_train_file_list[i] for i in num_list)
         train_x, train_y, train_flen = data_utils.read_data_from_file_list(self.inp_train_file_list,
                                                                            self.out_train_file_list,
                                                                            self.inp_dim, self.out_dim,
                                                                            sequential_training=True if self.sequential_training or self.encoder_decoder else False)
+
 
         # train_y_staic = get_static_features(train_y, self.windows, stream_sizes=[180, 3, 1, 3],
         # has_dynamic_features=[True, True, False, True],
@@ -167,6 +174,9 @@ class TensorflowClass(object):
                                                                            self.out_valid_file_list,
                                                                            self.inp_dim, self.out_dim,
                                                                            sequential_training=True if self.sequential_training or self.encoder_decoder else False)
+        # train_x = train_x[0:100000,:]
+        # train_y = train_y[0:100000,:]
+        print("shape of training set {}".format(train_x.shape))
         #### define the model ####
         if self.sequential_training:
             self.tensorflow_models.define_sequence_model()
