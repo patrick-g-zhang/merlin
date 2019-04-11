@@ -8,7 +8,7 @@ from tensorflow_lib import data_utils
 import pdb
 import logging
 import random
-
+import tfplot
 class TrainTensorflowModels(TensorflowModels):
     def __init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, model_dir,output_type='linear', dropout_rate=0.0, loss_function='mse', optimizer='adam', learning_rate=0.01, rnn_params=None):
 
@@ -112,6 +112,26 @@ class TrainTensorflowModels(TensorflowModels):
                     train_writer.add_summary(train_epoch_loss, epoch+1)
                     test_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2*overall_test_loss/(187*L_test)})
                     test_writer.add_summary(test_epoch_loss, epoch+1)
+                    # try to show F0 contour
+                    # run to generate output
+                    # pdb.set_trace()
+                    output_layer_output = sess.run(output_layer, feed_dict={input_layer: valid_x, is_training_batch: False})
+
+                    @tfplot.autowrap
+                    def plot_scatter(x,y):
+                        # NEVER use plt.XXX, or matplotlib.pyplot.
+                        # Use tfplot.subplots() instead of plt.subplots() to avoid thread-safety issues.
+                        fig, ax = tfplot.subplots(figsize=(10,3 ))
+                        ax.plot(x, color='green')
+                        ax.plot(y, color='red')
+                        return fig
+                    pdb.set_trace()
+                    x = tf.constant(output_layer_output[0:100,0], dtype=tf.float32)
+                    y = tf.constant(valid_y[0:100,0],dtype=tf.float32)
+                    ce=tf.expand_dims(plot_scatter(x),0)
+                    # test_writer.add_summary(sess.run(tfplot.figure.to_summary(,'F0 contour')))
+                    test_writer.add_summary(sess.run(tf.summary.image("F0 countour",ce)))
+
                     print("Epoch ",epoch+1, "Finishes","learning rate", learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
                     self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
                     print("The model parameters are saved")
