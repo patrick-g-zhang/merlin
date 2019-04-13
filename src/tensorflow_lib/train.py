@@ -126,9 +126,9 @@ class TrainTensorflowModels(TensorflowModels):
                         ax.plot(y, color='red')
                         return fig
                     pdb.set_trace()
-                    x = tf.constant(output_layer_output[0:100,0], dtype=tf.float32)
-                    y = tf.constant(valid_y[0:100,0],dtype=tf.float32)
-                    ce=tf.expand_dims(plot_scatter(x),0)
+                    x = tf.constant(output_layer_output[0:1000,0], dtype=tf.float32)
+                    y = tf.constant(valid_y[0:1000,0],dtype=tf.float32)
+                    ce=tf.expand_dims(plot_scatter(x,y),0)
                     # test_writer.add_summary(sess.run(tfplot.figure.to_summary(,'F0 contour')))
                     test_writer.add_summary(sess.run(tf.summary.image("F0 countour",ce)))
 

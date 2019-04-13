@@ -156,7 +156,7 @@ class TensorflowClass(object):
         logging.getLogger("train model")
         print('preparing train_x, train_y from input and output feature files...')
         # pdb.set_trace()
-        num_list = range(100)
+        num_list = range(1)
         # num_list = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,354]
         # num_list = [0]
         self.inp_train_file_list = list(self.inp_train_file_list[i] for i in num_list)
