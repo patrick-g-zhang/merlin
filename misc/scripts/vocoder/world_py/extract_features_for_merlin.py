@@ -8,6 +8,7 @@ import numpy as np
 import pyworld
 import pysptk
 import librosa
+from scipy.io import wavfile
 import pdb
 if len(sys.argv)!=5:
     print("Usage: ")
@@ -129,9 +130,11 @@ def process(filename):
     print('\n' + file_id)
 
     ### WORLD ANALYSIS -- extract vocoder parameters ###
-    x, fs = librosa.core.load(filename, sr=16000)
-    x = x.astype(np.float64)
-    f0, timeaxis = pyworld.harvest(x, fs, frame_period=5, f0_floor=71.0, f0_ceil=700)
+    # x, fs = librosa.core.load(filename, sr=16000)
+    fs, x = wavfile.read(filename)
+    f0 = pysptk.rapt(x.astype(np.float32), fs=fs, hopsize=80, min=60, max=400, voice_bias=0.0, otype=1)
+    x = x.astype(np.float64)/2**15
+    _, timeaxis = pyworld.harvest(x, fs, frame_period=5, f0_floor=60.0, f0_ceil=400)
     spectrogram = pyworld.cheaptrick(x, f0, timeaxis, fs)
     aperiodicity = pyworld.d4c(x, f0, timeaxis, fs)
     f0 = f0[:, None]
