@@ -1,3 +1,14 @@
+"""Extract acoustic feature with pyworld
+
+usage: extract_features_for_merlin.py [options]
+
+options:
+    --merlin-dir=<dir>           Dir of merlin
+
+    --low-f0=50                  Lower bound of F0 value
+    --high-f0=400                Upper bound of F0 value
+    -h, --help                   Show this help message and exit
+"""
 import os
 import sys
 import shutil
@@ -8,7 +19,9 @@ import numpy as np
 import pyworld
 import pysptk
 import librosa
+from multiprocessing import cpu_count
 from scipy.io import wavfile
+from docopt import docopt
 import pdb
 if len(sys.argv)!=5:
     print("Usage: ")
@@ -125,16 +138,21 @@ def process(filename):
     :param filename: path to wav file
     :return: .lf0, .mgc and .bap files
     '''
-
+    # pdb.set_trace()
     file_id = os.path.basename(filename).split(".")[0]
     print('\n' + file_id)
 
     ### WORLD ANALYSIS -- extract vocoder parameters ###
     # x, fs = librosa.core.load(filename, sr=16000)
     fs, x = wavfile.read(filename)
-    f0 = pysptk.rapt(x.astype(np.float32), fs=fs, hopsize=80, min=60, max=400, voice_bias=0.0, otype=1)
-    x = x.astype(np.float64)/2**15
-    _, timeaxis = pyworld.harvest(x, fs, frame_period=5, f0_floor=60.0, f0_ceil=400)
+    # warnning this parameter is important
+    alpha = pysptk.util.mcepalpha(fs)
+    hopesize=int(0.005*fs)
+    # pdb.set_trace()
+    f0 = pysptk.rapt(x.astype(np.float32), fs=fs, hopsize=hopesize, min=60, max=600, voice_bias=0.0, otype=1)
+    f0=f0.astype(np.float64)
+    x = x.astype(np.float64)/(2**15)
+    _, timeaxis = pyworld.harvest(x, fs, frame_period=5, f0_floor=60.0, f0_ceil=600)
     spectrogram = pyworld.cheaptrick(x, f0, timeaxis, fs)
     aperiodicity = pyworld.d4c(x, f0, timeaxis, fs)
     f0 = f0[:, None]
@@ -153,6 +171,7 @@ def process(filename):
     write_binfile(bap, os.path.join(bap_dir, file_id + '.bap'),dtype=np.float32)
     ### convert bapd to bap ###
 
+# args = docopt(__doc__)
 print("--- Feature extraction started ---")
 start_time = time.time()
 
@@ -160,13 +179,15 @@ start_time = time.time()
 wav_files = get_wav_filelist(wav_dir)
 
 # do multi-processing
-pool = mp.Pool(10)
+print("extract acoustic feature with world")
+num_workers = cpu_count()
+pool = mp.Pool(num_workers)
 pool.map(process, wav_files)
 
 # DEBUG:
 # for nxf in range(len(wav_files)):
 #    process(wav_files[nxf])
-
+# process("database/wav/100169.wav")
 # clean temporal files
 # keep temporal files for test
 # shutil.rmtree(sp_dir, ignore_errors=True)
