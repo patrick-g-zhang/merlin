@@ -8,6 +8,7 @@ import sys
 import textwrap
 import datetime
 import logging.config
+import pdb
 class configuration(object):
 
     """Configuration settings. Any user-specific values are read from an external file
@@ -202,6 +203,9 @@ class configuration(object):
             ('silence_pattern'    , ['*-#+*']                                             ,    'Labels', 'silence_pattern'),
             ('subphone_feats'     , 'full'                                                ,    'Labels', 'subphone_feats'),
             ('additional_features', {}                                                    ,    'Labels', 'additional_features'),
+            # those part will not be normalized in linguistic preprocessing stage of frontend
+            # for example spk_id and emo_id 
+            ('additional_labels'  , {}                                                    ,    'Labels', 'additional_labels'),
 
             ## For MagPhase Vocoder:
             ('label_align_orig_const_rate_dir', os.path.join(self.work_dir, 'data/label_state_align'), 'Labels', 'label_align_orig_const_rate'),
@@ -672,6 +676,7 @@ class configuration(object):
 #            current_stream_hidden_size = 0
 #            current_stream_weight = 0.0
 #            stream_lr_ratio = 0.0
+#             pdb.set_trace()
             if feature_name == 'mgc':
                 in_dimension  = self.mgc_dim
                 if not self.do_MLPG:
