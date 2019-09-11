@@ -1,3 +1,0 @@
-2019-03-30 16:54:07,290     INFO           main: Input label dimension is 332
-2019-03-30 16:54:07,299     INFO           main: preparing label data (input) using standard HTS style labels
-2019-03-30 16:54:37,390     INFO         labels: loaded /home/gyzhang/merlin/egs/blz/s1/experiments/blz/acoustic_model/data/label_phone_align/100086.lab, 671 labels
