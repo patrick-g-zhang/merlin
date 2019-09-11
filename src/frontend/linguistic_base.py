@@ -14,7 +14,7 @@ class LinguisticBase(object):
 
     ## the ori_file_list contains the file paths of the raw linguistic data
     ## the output_file_list contains the file paths of the normalised linguistic data
-    ##
+
     def perform_normalisation(self, ori_file_list, output_file_list, label_type="state_align", state_number=5, dur_file_list=None):
 
         logger = logging.getLogger("perform_normalisation")

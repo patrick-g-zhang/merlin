@@ -9,6 +9,7 @@ import pdb
 import logging
 import random
 import tfplot
+
 class TrainTensorflowModels(TensorflowModels):
     def __init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, model_dir,output_type='linear', dropout_rate=0.0, loss_function='mse', optimizer='adam', learning_rate=0.01, rnn_params=None):
 
@@ -28,113 +29,264 @@ class TrainTensorflowModels(TensorflowModels):
             with tf.name_scope(dim_summary_name):
                 tf.summary.histogram(dim_summary_name, var[:,dim])
 
-    def train_feedforward_model(self, train_x, train_y, valid_x, valid_y, batch_size=256, num_of_epochs=10, shuffle_data=True):
-        use_model=False
+    def train_feedforward_utt_model(self, train_x, train_y, valid_x, valid_y, batch_size=256, num_of_epochs=10, shuffle_data=True, init_dnn_model_file='_'):
+        """
+            train utt embedding text to speech system
+        """
+
+        logger = logging.getLogger("train feedforward model")
+        seed = 12345
+        np.random.seed(seed)
+        logger.info("The shape of train_x %s" % str(train_x.shape))
+        # load data
+        train_lin_x, train_lab_x = np.hsplit(train_x, np.array([-1]))
+        valid_lin_x, valid_lab_x = np.hsplit(valid_x, np.array([-1]))
+
+        if init_dnn_model_file != "_":
+            tf.reset_default_graph()
+            with tf.Graph().as_default() as g:
+                self.global_step = tf.Variable(0, trainable=False, name="new_global_step")
+                with tf.name_scope("renew_lr"):
+                    self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate, global_step=self.global_step, decay_steps=5000, decay_rate=0.99)
+                # recreate a graph saved in a metagraphdef proto
+                # self.global_step = tf.get_collection("global_step")[0]
+                self.saver = tf.train.import_meta_graph(init_dnn_model_file)
+                print("loading the model parameters from {0}".format(init_dnn_model_file))
+                # is_training_batch = tf.get_collection("is_training_batch")[0]
+                if self.dropout_rate != 0.0:
+                    is_training_drop = tf.get_collection("is_training_drop")[0]
+                output_layer = tf.get_collection("output_layer")[0]
+                input_layer = tf.get_collection("input_layer")[0]
+                output_data = tf.get_collection("output_data")[0]
+                loss = tf.get_collection("loss")[0]
+                self.training_op = tf.get_collection("train_op")[0]
+                epoch_average_loss=tf.get_collection('epoch_average_loss')[0]
+
+                # with tf.name_scope("training_op"):
+                #     if self.optimizer == "adam":
+                # pdb.set_trace()
+                self.training_op = tf.train.AdamOptimizer(self.learning_rate,name='Adam_new').minimize(loss, global_step=self.global_step)
+                epoch_average_loss_summary = tf.get_collection("epoch_average_loss_summary")[0]
+                merged = tf.get_collection("merged")[0]
+        else:
+            with self.graph.as_default() as g:
+                self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
+                                                                global_step=self.global_step, decay_steps=5000,
+                                                                decay_rate=0.99)
+                # is_training_batch = g.get_collection(name="is_training_batch")[0]
+                self.saver = tf.train.Saver()
+                # input_layer = g.get_collection(name="input_layer")[0]
+                # output_layer = g.get_collection(name="output_layer")[0]
+                output_data = tf.placeholder(dtype=tf.float32, shape=(None, self.n_out), name="output_data")
+                tf.add_to_collection(name='output_data', value=output_data)
+                # pdb.set_trace()
+                with tf.name_scope("loss"):
+                    # consider more weight on mse
+                    loss = 0.5 * tf.reduce_sum(tf.reduce_mean(tf.square(self.output_layer - output_data), axis=0), name="loss")
+                    tf.add_to_collection(name='loss', value=loss)
+                # with tf.name_scope("training_op"):
+                    # if self.optimizer == "adam":
+                self.training_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss, global_step=self.global_step)
+                tf.add_to_collection(name="train_op", value=self.training_op)
+                tf.summary.scalar('mean_loss', loss)
+                tf.summary.scalar('learning_rate', self.learning_rate)
+                merged = tf.summary.merge_all()
+                epoch_average_loss = tf.placeholder(dtype=tf.float32, shape=None)
+                tf.add_to_collection(name='epoch_average_loss', value=epoch_average_loss)
+                epoch_average_loss_summary = tf.summary.scalar('epoch avergae loss', epoch_average_loss)
+                tf.add_to_collection(name='epoch_average_loss_summary', value=epoch_average_loss_summary)
+                tf.add_to_collection(name='merged', value=merged)
+
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(config=config, graph=g) as sess:
+            init = tf.global_variables_initializer()
+            init.run()
+            if init_dnn_model_file != "_":
+                # restore parameters from init dnn model checkpoints
+                init_dnn_ckpt_dir = os.path.dirname(init_dnn_model_file)
+                self.saver.restore(sess, os.path.join(init_dnn_ckpt_dir, "mymodel.ckpt"))
+                print("The model parameters are successfully restored")
+
+            train_writer = tf.summary.FileWriter(self.ckpt_dir + '/train', sess.graph)
+            test_writer = tf.summary.FileWriter(self.ckpt_dir + '/test')
+            batch_num = int(train_x.shape[0] / batch_size) + 1
+            for epoch in range(num_of_epochs):
+                L_training = 0
+                L_test = 0
+                overall_training_loss = 0
+                overall_test_loss = 0
+                for iteration in range(int(train_x.shape[0] / batch_size) + 1):
+                    if (iteration + 1) * batch_size > train_x.shape[0]:
+                        x_lin_batch, x_lab_batch, y_batch = train_lin_x[iteration * batch_size:], train_lab_x[iteration * batch_size:], train_y[iteration * batch_size:]
+                        if list(x_lin_batch) != []:
+                            L_training += 1
+                        else:
+                            continue
+                    else:
+                        x_lin_batch, x_lab_batch, y_batch = train_lin_x[iteration * batch_size:(iteration + 1) * batch_size, ], train_lab_x[iteration * batch_size:(iteration + 1) * batch_size, ], train_y[iteration * batch_size:(iteration + 1) * batch_size]
+                        L_training += 1
+
+                    # do valid each ten steps
+                    if iteration % 10 == 1:
+                        test_loss, summary = sess.run([loss, merged], feed_dict={self.input_lin_layer: valid_lin_x, self.utt_index_t: valid_lab_x, output_data: valid_y, self.is_training_batch: False})
+                        overall_test_loss += test_loss
+                        L_test += 1
+                        test_writer.add_summary(summary, epoch * batch_num + iteration)
+                    # do training for each step
+                    _, batch_loss, summary = sess.run([self.training_op, loss, merged], feed_dict={self.input_lin_layer: x_lin_batch, self.utt_index_t: x_lab_batch, output_data: y_batch, self.is_training_batch: True})
+                    train_writer.add_summary(summary, epoch * batch_num + iteration)
+                    overall_training_loss += batch_loss
+               # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
+                 #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
+                learning_rate = sess.run(self.learning_rate)
+                train_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2 * overall_training_loss / (L_training * 187)})
+                train_writer.add_summary(train_epoch_loss, epoch + 1)
+                test_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2 * overall_test_loss / (187 * L_test)})
+                test_writer.add_summary(test_epoch_loss, epoch + 1)
+                print("Epoch ", epoch + 1, "Finishes", "learning rate", learning_rate, "Training average loss:", 2 * overall_training_loss / (L_training * 187), "Test average loss", 2 * overall_test_loss / (187 * L_test))
+                self.saver.save(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
+                print("The model parameters are saved")
+
+
+
+    def train_feedforward_model(self, train_x, train_y, valid_x, valid_y, batch_size=256, num_of_epochs=10, shuffle_data=True,init_dnn_model_file='_'):
         logger = logging.getLogger("train feedforward model")
         seed=12345
         np.random.seed(seed)
         print(train_x.shape)
-        with self.graph.as_default() as g:
-            is_training_batch=g.get_collection(name="is_training_batch")[0]
-            if self.dropout_rate!=0.0:
-                is_training_drop=g.get_collection(name="is_training_drop")[0]
-            self.saver=tf.train.Saver()
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
-            with tf.Session(config=config) as sess:
+        pdb.set_trace()
+        if init_dnn_model_file != "_":
+            tf.reset_default_graph()
+            with tf.Graph().as_default() as g:
+                self.global_step = tf.Variable(0, trainable=False,name="new_global_step")
+                with tf.name_scope("renew_lr"):
+                    self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
+                                                                global_step=self.global_step, decay_steps=5000,
+                                                                decay_rate=0.99)
+                # recreate a graph saved in a metagraphdef proto
+                # self.global_step = tf.get_collection("global_step")[0]
+                self.saver = tf.train.import_meta_graph(init_dnn_model_file)
+                print("loading the model parameters from {0}".format(init_dnn_model_file))
+                is_training_batch = tf.get_collection("is_training_batch")[0]
+                if self.dropout_rate != 0.0:
+                    is_training_drop = tf.get_collection("is_training_drop")[0]
+                output_layer = tf.get_collection("output_layer")[0]
+                input_layer = tf.get_collection("input_layer")[0]
+                output_data = tf.get_collection("output_data")[0]
+                loss = tf.get_collection("loss")[0]
+                self.training_op = tf.get_collection("train_op")[0]
+                epoch_average_loss=tf.get_collection('epoch_average_loss')[0]
+
+                # with tf.name_scope("training_op"):
+                #     if self.optimizer == "adam":
                 # pdb.set_trace()
-                # if use_model:
-                #     new_saver = tf.train.import_meta_graph(os.path.join(self.ckpt_dir, "mymodel.ckpt.meta"))
-                #     print("loading the model parameters...")
-                #     output_layer = tf.get_collection("output_layer")[0]
-                #     input_layer = tf.get_collection("input_layer")[0]
-                #     new_saver.restore(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
-                #     print("The model parameters are successfully restored")
-                # else:
+                self.training_op = tf.train.AdamOptimizer(self.learning_rate,name='Adam_new').minimize(loss, global_step=self.global_step)
+                epoch_average_loss_summary = tf.get_collection("epoch_average_loss_summary")[0]
+                merged = tf.get_collection("merged")[0]
+        else:
+            with self.graph.as_default() as g:
+                self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
+                                                                global_step=self.global_step, decay_steps=5000,
+                                                                decay_rate=0.99)
+                is_training_batch=g.get_collection(name="is_training_batch")[0]
+                if self.dropout_rate!=0.0:
+                    is_training_drop=g.get_collection(name="is_training_drop")[0]
+                self.saver=tf.train.Saver()
                 input_layer=g.get_collection(name="input_layer")[0]
                 output_layer = g.get_collection(name="output_layer")[0]
                 output_data = tf.placeholder(dtype=tf.float32, shape=(None, self.n_out), name="output_data")
-
+                tf.add_to_collection(name='output_data', value=output_data)
                 with tf.name_scope("loss"):
+                # consider more weight on mse
                     loss = 0.5 * tf.reduce_sum(tf.reduce_mean(tf.square(output_layer - output_data), axis=0),name="loss")
-                    # loss=tf.reduce_mean(tf.square(output_layer-output_data),name="loss")
+                    tf.add_to_collection(name='loss',value=loss)
+                # with tf.name_scope("training_op"):
+                    # if self.optimizer == "adam":
+                self.training_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss, global_step=self.global_step)
+                tf.add_to_collection(name="train_op",value=self.training_op)
                 tf.summary.scalar('mean_loss', loss)
                 tf.summary.scalar('learning_rate', self.learning_rate)
-                epoch_average_loss = tf.placeholder(dtype=tf.float32,shape=None)
                 merged = tf.summary.merge_all()
+                epoch_average_loss = tf.placeholder(dtype=tf.float32, shape=None)
+                tf.add_to_collection(name='epoch_average_loss',value=epoch_average_loss)
                 epoch_average_loss_summary = tf.summary.scalar('epoch avergae loss', epoch_average_loss)
-                with tf.name_scope("train"):
-                    self.training_op = self.training_op.minimize(loss, global_step=self.global_step)
-
-                train_writer = tf.summary.FileWriter(self.ckpt_dir + '/train',
-                                      sess.graph)
-                test_writer = tf.summary.FileWriter(self.ckpt_dir + '/test')
-                init = tf.global_variables_initializer()
-
-                init.run()
-                batch_num = int(train_x.shape[0]/batch_size)+1
-                # summary_writer=tf.summary.FileWriter(os.path.join(self.ckpt_dir,"losslog"),sess.graph)
-                for epoch in range(num_of_epochs):
-                    L_training=0
-                    L_test=0
-                    overall_training_loss=0
-                    overall_test_loss=0
-                    for iteration in range(int(train_x.shape[0]/batch_size)+1):
-                        if (iteration+1)*batch_size>train_x.shape[0]:
-                            x_batch,y_batch=train_x[iteration*batch_size:],train_y[iteration*batch_size:]
-                            if list(x_batch)!=[]:
-                                L_training+=1
-                            else:
-                                continue
-                        else:
-                            x_batch,y_batch=train_x[iteration*batch_size:(iteration+1)*batch_size,], train_y[iteration*batch_size:(iteration+1)*batch_size]
+                tf.add_to_collection(name='epoch_average_loss_summary',value=epoch_average_loss_summary)
+                tf.add_to_collection(name='merged',value=merged)
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(config=config, graph=g) as sess:
+            init = tf.global_variables_initializer()
+            init.run()
+            if init_dnn_model_file != "_":
+                # restore parameters from init dnn model checkpoints
+                init_dnn_ckpt_dir=os.path.dirname(init_dnn_model_file)
+                self.saver.restore(sess, os.path.join(init_dnn_ckpt_dir, "mymodel.ckpt"))
+                print("The model parameters are successfully restored")
+            train_writer = tf.summary.FileWriter(self.ckpt_dir + '/train',
+                                  sess.graph)
+            test_writer = tf.summary.FileWriter(self.ckpt_dir + '/test')
+            batch_num = int(train_x.shape[0]/batch_size)+1
+            for epoch in range(num_of_epochs):
+                L_training=0
+                L_test=0
+                overall_training_loss=0
+                overall_test_loss=0
+                for iteration in range(int(train_x.shape[0]/batch_size)+1):
+                    if (iteration+1)*batch_size>train_x.shape[0]:
+                        x_batch,y_batch=train_x[iteration*batch_size:],train_y[iteration*batch_size:]
+                        if list(x_batch)!=[]:
                             L_training+=1
-                        if self.dropout_rate!=0.0:
-                            if iteration%10==1:
-                                test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_drop:False,is_training_batch:False})
-                                test_writer.add_summary(summary, epoch*batch_num+iteration)
-                            _,batch_loss, summary=sess.run([self.training_op,loss,merged],feed_dict={input_layer:x_batch,output_data:y_batch,is_training_drop:True,is_training_batch:True})
-                            train_writer.add_summary(summary,epoch*batch_num+iteration)
                         else:
-                            if iteration%10==1:
-                                test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_batch:False})
-                                overall_test_loss+=test_loss
-                                L_test+=1
-                                test_writer.add_summary(summary, epoch*batch_num+iteration)
-                            _,batch_loss,summary=sess.run([self.training_op,loss,merged],feed_dict={input_layer:x_batch,output_data:y_batch,is_training_batch:True})
-                            train_writer.add_summary(summary,epoch*batch_num+iteration)
-                        overall_training_loss+=batch_loss
-                   # logging.info()
-                   # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
-                     #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
-                    learning_rate = sess.run(self.learning_rate)
-                    train_epoch_loss = sess.run(epoch_average_loss_summary,feed_dict={epoch_average_loss:2*overall_training_loss/(L_training*187)})
-                    train_writer.add_summary(train_epoch_loss, epoch+1)
-                    test_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2*overall_test_loss/(187*L_test)})
-                    test_writer.add_summary(test_epoch_loss, epoch+1)
-                    # try to show F0 contour
-                    # run to generate output
-                    # pdb.set_trace()
-                    output_layer_output = sess.run(output_layer, feed_dict={input_layer: valid_x, is_training_batch: False})
+                            continue
+                    else:
+                        x_batch,y_batch=train_x[iteration*batch_size:(iteration+1)*batch_size,], train_y[iteration*batch_size:(iteration+1)*batch_size]
+                        L_training+=1
+                    if self.dropout_rate!=0.0:
+                        if iteration%10==1:
+                            test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_drop:False,is_training_batch:False})
+                            test_writer.add_summary(summary, epoch*batch_num+iteration)
+                        # pdb.set_trace()
+                        _,batch_loss, summary=sess.run([self.training_op,loss,merged],feed_dict={input_layer:x_batch,output_data:y_batch,is_training_drop:True,is_training_batch:True})
+                        train_writer.add_summary(summary,epoch*batch_num+iteration)
+                    else:
+                        if iteration%10==1:
+                            test_loss, summary=sess.run([loss,merged],feed_dict={input_layer:valid_x,output_data:valid_y,is_training_batch:False})
+                            overall_test_loss+=test_loss
+                            L_test+=1
+                            test_writer.add_summary(summary, epoch*batch_num+iteration)
+                        _,batch_loss,summary=sess.run([self.training_op,loss,merged],feed_dict={input_layer:x_batch,output_data:y_batch,is_training_batch:True})
+                        train_writer.add_summary(summary,epoch*batch_num+iteration)
+                    overall_training_loss+=batch_loss
+               # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
+                 #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
+                learning_rate = sess.run(self.learning_rate)
+                train_epoch_loss = sess.run(epoch_average_loss_summary,feed_dict={epoch_average_loss:2*overall_training_loss/(L_training*187)})
+                train_writer.add_summary(train_epoch_loss, epoch+1)
+                test_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2*overall_test_loss/(187*L_test)})
+                test_writer.add_summary(test_epoch_loss, epoch+1)
+                # try to show F0 contour
+                # run to generate output
+                # pdb.set_trace()
+                output_layer_output = sess.run(output_layer, feed_dict={input_layer: valid_x, is_training_batch: False})
 
-                    @tfplot.autowrap
-                    def plot_scatter(x,y):
-                        # NEVER use plt.XXX, or matplotlib.pyplot.
-                        # Use tfplot.subplots() instead of plt.subplots() to avoid thread-safety issues.
-                        fig, ax = tfplot.subplots(figsize=(10,3 ))
-                        ax.plot(x, color='green')
-                        ax.plot(y, color='red')
-                        return fig
-                    pdb.set_trace()
-                    x = tf.constant(output_layer_output[0:1000,0], dtype=tf.float32)
-                    y = tf.constant(valid_y[0:1000,0],dtype=tf.float32)
-                    ce=tf.expand_dims(plot_scatter(x,y),0)
-                    # test_writer.add_summary(sess.run(tfplot.figure.to_summary(,'F0 contour')))
-                    test_writer.add_summary(sess.run(tf.summary.image("F0 countour",ce)))
+                @tfplot.autowrap
+                def plot_scatter(x,y):
+                    # NEVER use plt.XXX, or matplotlib.pyplot.
+                    # Use tfplot.subplots() instead of plt.subplots() to avoid thread-safety issues.
+                    fig, ax = tfplot.subplots(figsize=(10,3 ))
+                    ax.plot(x, color='green')
+                    ax.plot(y, color='red')
+                    return fig
+              #  x = tf.constant(output_layer_output[0:1000,0], dtype=tf.float32)
+             #   y = tf.constant(valid_y[0:1000,0],dtype=tf.float32)
+               # ce=tf.expand_dims(plot_scatter(x,y),0)
+                # test_writer.add_summary(sess.run(tfplot.figure.to_summary(,'F0 contour')))
+               # test_writer.add_summary(sess.run(tf.summary.image("F0 countour",ce)))
 
-                    print("Epoch ",epoch+1, "Finishes","learning rate", learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
-                    self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
-                    print("The model parameters are saved")
+                print("Epoch ",epoch+1, "Finishes","learning rate", learning_rate,"Training average loss:", 2*overall_training_loss/(L_training*187),"Test average loss",2*overall_test_loss/(187*L_test))
+                self.saver.save(sess,os.path.join(self.ckpt_dir,"mymodel.ckpt"))
+                print("The model parameters are saved")
 
     def train_feedforward_multitask_model(self, train_x, train_y,train_aux,batch_size=256, num_of_epochs=10, shuffle_data=True):
         seed=12345

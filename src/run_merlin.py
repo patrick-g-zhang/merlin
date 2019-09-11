@@ -128,6 +128,7 @@ def main_function(cfg):
     nn_cmp_norm_file_list    = file_paths.get_nn_cmp_norm_file_list()
 
     ###normalisation information
+    # pdb.set_trace()
     norm_info_file = file_paths.norm_info_file
 
     ### normalise input full context label
@@ -138,6 +139,8 @@ def main_function(cfg):
 
     # this class is for hts label style normalization and adding frame features also means add duration information
     label_normaliser = HTSLabelNormalisation(question_file_name=cfg.question_file_name, add_frame_features=cfg.add_frame_features, subphone_feats=cfg.subphone_feats)
+
+    ## for this 
     add_feat_dim = sum(cfg.additional_features.values())
     lab_dim = label_normaliser.dimension + add_feat_dim + cfg.appended_input_dim
     if cfg.VoiceConversion:
@@ -167,10 +170,12 @@ def main_function(cfg):
     label_norm_file = file_paths.label_norm_file
 
     test_id_list = file_paths.test_id_list
+   
+
+    # ------------------------------------------------------------------
     if cfg.NORMLAB:
         # simple HTS labels
         # in_label_align_file_list is set in configuration file
-        # pdb.set_trace()
         logger.info('preparing label data (input) using standard HTS style labels')
         label_normaliser.perform_normalisation(in_label_align_file_list, binary_label_file_list, label_type=cfg.label_type, state_number=cfg.state_number)
 
@@ -188,11 +193,15 @@ def main_function(cfg):
 
                 binary_label_file_list = out_feat_file_list
 
+
         remover = SilenceRemover(n_cmp = lab_dim, silence_pattern = cfg.silence_pattern, label_type=cfg.label_type, remove_frame_features = cfg.add_frame_features, subphone_feats = cfg.subphone_feats, state_number=cfg.state_number)
         # pdb.set_trace()
         remover.remove_silence(binary_label_file_list, in_label_align_file_list, nn_label_file_list)
 
         min_max_normaliser = MinMaxNormalisation(feature_dimension = lab_dim, min_value = 0.01, max_value = 0.99)
+
+        
+
 
         ###use only training data to find min-max information, then apply on the whole dataset
         if cfg.GenTestList:
@@ -207,6 +216,24 @@ def main_function(cfg):
         else:
             min_max_normaliser.normalise_data(nn_label_file_list, nn_label_norm_file_list)
 
+        ## perform utterance level index, append utterance index as additional feature without any normlization
+        ## only will be performed after normalization
+        if cfg.additional_labels:
+            pdb.set_trace()
+            # out_feat_file_list = file_paths.out_feat_file_list
+            nn_label_norm_dir_new = os.path.join(cfg.inter_data_dir, 'nn_no_silence_lab_norm_' + str(lab_dim + 1))
+            out_feat_file_list = prepare_file_path_list(file_id_list, nn_label_norm_dir_new, cfg.lab_ext)
+            in_dim = lab_dim
+
+            for new_feature, new_feature_dim in cfg.additional_labels.items():
+                new_feat_dir  = os.path.join(data_dir, new_feature)
+                new_feat_file_list = prepare_file_path_list(file_id_list, new_feat_dir, '.'+new_feature)
+
+                merger = MergeFeat(lab_dim = in_dim, feat_dim = new_feature_dim)
+                merger.merge_label(nn_label_norm_file_list, new_feat_file_list, out_feat_file_list)
+                in_dim += new_feature_dim
+
+                nn_label_norm_file_list = out_feat_file_list
 
 
     if min_max_normaliser != None and not cfg.GenTestList:
@@ -242,7 +269,7 @@ def main_function(cfg):
             nn_cmp_norm_file_list = prepare_file_path_list(test_id_list, nn_cmp_norm_dir, cfg.cmp_ext)
         
         acoustic_worker = AcousticComposition(delta_win = delta_win, acc_win = acc_win)
-        pdb.set_trace()
+        # pdb.set_trace()
 
         if 'dur' in list(cfg.in_dir_dict.keys()) and cfg.AcousticModel:
             lf0_file_list = file_paths.get_lf0_file_list()
@@ -332,7 +359,6 @@ def main_function(cfg):
             logger.info('saved %s vectors to %s' %(cfg.output_feature_normalisation, norm_info_file))
         if cfg.output_feature_normalisation == 'MVN':
             feature_index = 0
-            # pdb.set_trace()
             for feature_name in list(cfg.out_dimension_dict.keys()):
                 feature_std_vector = numpy.array(global_std_vector[:,feature_index:feature_index+cfg.out_dimension_dict[feature_name]], 'float32')
 
@@ -370,21 +396,26 @@ def main_function(cfg):
     gen_dir = os.path.join(gen_dir, temp_dir_name)
 
     if cfg.switch_to_keras or cfg.switch_to_tensorflow:
-        ### set configuration variables ###
+        # set configuration variables and add additional label dim
+        if cfg.additional_labels:
+            add_label_dim = sum(cfg.additional_labels.values())
+            lab_dim = lab_dim + add_label_dim
+            cfg.inp_feat_dir = os.path.join(cfg.inter_data_dir, 'nn_no_silence_lab_norm_' + str(lab_dim))
+        else:
+            cfg.inp_feat_dir = nn_label_norm_dir
+
         cfg.inp_dim = lab_dim
         cfg.out_dim = cfg.cmp_dim
 
-        cfg.inp_feat_dir  = nn_label_norm_dir
-        cfg.out_feat_dir  = nn_cmp_norm_dir
+        cfg.out_feat_dir = nn_cmp_norm_dir
         cfg.pred_feat_dir = gen_dir
 
         if cfg.GenTestList and cfg.test_synth_dir!="None":
             cfg.inp_feat_dir  = cfg.test_synth_dir
             cfg.pred_feat_dir = cfg.test_synth_dir
 
-
     if cfg.switch_to_tensorflow:
-        ### call Tensorflowclass and use an instance ###
+        # call Tensorflowclass and use an instance
         from run_tensorflow_with_merlin_io import TensorflowClass
         tf_instance = TensorflowClass(cfg)
 
@@ -449,7 +480,6 @@ def main_function(cfg):
                 raise
 
         gen_file_id_list = file_id_list[cfg.train_file_number-20:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
-        # pdb.set_trace()
         test_x_file_list = nn_label_norm_file_list[0:cfg.train_file_number+cfg.valid_file_number+cfg.test_file_number]
 
         gen_file_list = prepare_file_path_list(gen_file_id_list, gen_dir, cfg.cmp_ext)
@@ -466,8 +496,8 @@ def main_function(cfg):
         if cfg.test_synth_dir!="None":
             gen_dir = cfg.test_synth_dir
 
-    # pdb.set_trace()
     if cfg.DNNGEN:
+        pdb.set_trace()
         logger.info('generating from DNN')
         if not os.path.exists(gen_dir):
             os.mkdir(gen_dir)
@@ -482,10 +512,8 @@ def main_function(cfg):
         cmp_min_vector = cmp_min_max[0, ]
         cmp_max_vector = cmp_min_max[1, ]
 
-        # pdb.set_trace()
         if cfg.output_feature_normalisation == 'MVN':
             denormaliser = MeanVarianceNorm(feature_dimension = cfg.cmp_dim)
-            pdb.set_trace()
             denormaliser.feature_denormalisation(gen_file_list, gen_file_list, cmp_min_vector, cmp_max_vector)
 
         if cfg.output_feature_normalisation == 'MINMAX':
@@ -495,7 +523,6 @@ def main_function(cfg):
         if cfg.AcousticModel:
             ##perform MLPG to smooth parameter trajectory
             ## lf0 is included, the output features must have vuv.
-        #    pdb.set_trace()
             generator = ParameterGeneration(gen_wav_features = cfg.gen_wav_features, enforce_silence = cfg.enforce_silence)
             generator.acoustic_decomposition(gen_file_list, cfg.cmp_dim, cfg.out_dimension_dict, cfg.file_extension_dict, var_file_dict, do_MLPG=cfg.do_MLPG, cfg=cfg)
 
@@ -513,10 +540,8 @@ def main_function(cfg):
 
     ### generate wav
     if cfg.GENWAV:
-        # pdb.set_trace()
         logger.info('reconstructing waveform(s)')
         # wav_dir = os.path.join(gen_dir,'wav')
-      #  pdb.set_trace()
         if not os.path.exists(gen_dir):
             os.mkdir(gen_dir)
         generate_wav(gen_dir, gen_file_id_list, cfg)     # generated speech
@@ -668,7 +693,7 @@ if __name__ == '__main__':
     # these things should be done even before trying to parse the command line
     # create a configuration instance
     # and get a short name for this instance
-    cfg=configuration.cfg
+    cfg = configuration.cfg
     # set up logging to use our custom class
     logging.setLoggerClass(LoggerPlotter)
     # get a logger for this main function
@@ -679,6 +704,5 @@ if __name__ == '__main__':
     config_file = sys.argv[1]
     config_file = os.path.abspath(config_file)
     cfg.configure(config_file)
-    # pdb.set_trace()
     main_function(cfg)
     sys.exit(0)

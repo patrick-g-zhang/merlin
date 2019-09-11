@@ -13,12 +13,14 @@ from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import init_ops,math_ops
 import pdb
 import logging
+
+
 class TensorflowModels(object):
 
-    def __init__ (self,n_in,hidden_layer_size,n_out,hidden_layer_type,output_type="linear",dropout_rate=0,loss_function="mse",optimizer="adam", initial_learning_rate=0.001):
+    def __init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, output_type="linear", dropout_rate=0, loss_function="mse", optimizer="adam", initial_learning_rate=0.001):
 
-        #self.session=tf.InteractiveSession()
-        self.n_in  = int(n_in)
+        # special case for additional label
+        self.n_in = int(n_in) - 1
         self.n_out = int(n_out)
 
         self.n_layers = len(hidden_layer_size)
@@ -32,9 +34,84 @@ class TensorflowModels(object):
         self.dropout_rate  = dropout_rate
         self.loss_function = loss_function
         self.optimizer     = optimizer
-        self.graph=tf.Graph()
+        self.graph = tf.Graph()
         self.initial_learning_rate = initial_learning_rate
         self.learning_rate = initial_learning_rate
+
+    def define_feedforward_model_utt(self):
+        """
+            utterance index embedding
+            last dim of input should be index
+        """
+        layer_list = []
+        with self.graph.as_default() as g:
+            self.global_step = tf.Variable(0, trainable=False)
+            g.add_to_collection(name='global_step', value=self.global_step)
+            self.is_training_batch = tf.placeholder(tf.bool, shape=(), name="is_training_batch")
+            # bn_params={"is_training":is_training_batch,"decay":0.99,"updates_collections":None}
+            # g.add_to_collection("is_training_batch", is_training_batch)
+
+            with tf.name_scope("input"):
+                # shape (N, 319)
+                self.input_lin_layer = tf.placeholder(dtype=tf.float32, shape=(None, self.n_in), name="input_layer")
+                # embedding shape (UTT, 10)
+                utt_embeddings = tf.get_variable("utt-embeddings", [1000, 10], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=0.5))
+                # label (N, 1)
+                self.utt_index_t = tf.placeholder(dtype=tf.int32, shape=(None, 1), name="utt_index")
+
+                # embedding result (N, 1, 10)
+                embedding_utt = tf.nn.embedding_lookup(utt_embeddings, self.utt_index_t)
+                # concatenate embedding result and linguistic feature , shape (N, 329)
+                # shape (N, 10)
+                embedding_utt = tf.squeeze(embedding_utt, axis=-2)
+                input_layer = tf.concat([self.input_lin_layer, embedding_utt], 1)
+
+                if self.dropout_rate != 0.0:
+                    print("Using dropout to avoid overfitting and the dropout rate is", self.dropout_rate)
+                    is_training_drop = tf.placeholder(dtype=tf.bool, shape=(), name="is_training_drop")
+                    input_layer_drop = dropout(input_layer, self.dropout_rate, is_training=is_training_drop)
+                    layer_list.append(input_layer_drop)
+                    g.add_to_collection(name="is_training_drop", value=is_training_drop)
+                else:
+                    layer_list.append(input_layer)
+            g.add_to_collection("input_layer", layer_list[0])
+            for i in range(len(self.hidden_layer_size)):
+                with tf.name_scope("hidden_layer_"+ str(i+1)):
+                    if self.dropout_rate != 0.0:
+                        last_layer=layer_list[-1]
+                        if self.hidden_layer_type[i] == "tanh":
+                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=None)
+                            new_layer = tf.contrib.layers.batch_norm(new_layer,is_training=self.is_training_batch)
+                            new_layer = tf.nn.tanh(new_layer)
+                        if self.hidden_layer_type[i]=="sigmoid":
+                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.sigmoid)
+                        if self.hidden_layer_type[i]=="relu":
+                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.relu)
+                        if self.hidden_layer_type[i]=="selu":
+                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.selu)
+                        new_layer_drop=dropout(new_layer,self.dropout_rate,is_training=is_training_drop)
+                        layer_list.append(new_layer_drop)
+                    else:
+                        # pdb.set_trace()
+                        last_layer = layer_list[-1]
+                        if self.hidden_layer_type[i] == "tanh":
+                            new_layer = fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=None)
+                            new_layer = tf.nn.tanh(new_layer)
+                        if self.hidden_layer_type[i]=="sigmoid":
+                            new_layer = fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.sigmoid)
+                        if self.hidden_layer_type[i]=="relu":
+                            new_layer = fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.relu)
+                        if self.hidden_layer_type[i]=="selu":
+                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.selu)
+                        layer_list.append(new_layer)
+
+            with tf.name_scope("output_layer"):
+                if self.output_type == "linear":
+                    self.output_layer = fully_connected(layer_list[-1], self.n_out, activation_fn=None)
+                if self.output_type == "tanh":
+                    self.output_layer = fully_connected(layer_list[-1], self.n_out, activation_fn=tf.nn.tanh)
+                # g.add_to_collection(name="output_layer", value=output_layer)
+
     def define_feedforward_model(self):
         """
             the basic deep feedforward dnn model
@@ -43,9 +120,7 @@ class TensorflowModels(object):
         with self.graph.as_default() as g:
             #pdb.set_trace()
             self.global_step  = tf.Variable(0,trainable=False)
-            self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
-                                           global_step=self.global_step,
-                                           decay_steps=5000,decay_rate=0.99)
+            g.add_to_collection(name='global_step',value=self.global_step)
             is_training_batch=tf.placeholder(tf.bool,shape=(),name="is_training_batch")
             # bn_params={"is_training":is_training_batch,"decay":0.99,"updates_collections":None}
             g.add_to_collection("is_training_batch",is_training_batch)
@@ -97,9 +172,6 @@ class TensorflowModels(object):
                 if self.output_type=="tanh":
                     output_layer=fully_connected(layer_list[-1],self.n_out,activation_fn=tf.nn.tanh)
                 g.add_to_collection(name="output_layer",value=output_layer)
-            with tf.name_scope("training_op"):
-                if self.optimizer=="adam":
-                    self.training_op=tf.train.AdamOptimizer(self.learning_rate)
 
 
     def define_feedforward_multitask2_model(self):

@@ -77,12 +77,7 @@ class   ParameterGeneration(object):
         vuv_dimension = None
 
         for feature_name in list(out_dimension_dict.keys()):
-#            if feature_name != 'vuv':
             stream_start_index[feature_name] = dimension_index
-#            else:
-#                vuv_dimension = dimension_index
-#                recorded_vuv = True
-
             dimension_index += out_dimension_dict[feature_name]
 
         io_funcs = BinaryIOCollection()
@@ -101,7 +96,8 @@ class   ParameterGeneration(object):
             features, frame_number = io_funcs.load_binary_file_frame(file_name, dimension)
 
           #  logger.info('processing %4d of %4d: %s' % (findex,flen,file_name) )
-
+          #   if file_name == "/home/gyzhang/merlin/egs/kingtts/s2/experiments/kingtts/acoustic_model/gen/feed_forward_4_relu/103002.cmp":
+          #       pdb.set_trace()
             for feature_name in self.gen_wav_features:
 
                 logger.debug(' feature: %s' % feature_name)
@@ -118,6 +114,7 @@ class   ParameterGeneration(object):
                 if do_MLPG == False:
                     gen_features = current_features
                 else:
+                    # print("mlpg generate {}".format(file_name))
                     gen_features = mlpg_algo.generation(current_features, var, out_dimension_dict[feature_name]//3)
                 logger.debug(' feature dimensions: %d by %d' %(gen_features.shape[0], gen_features.shape[1]))
 

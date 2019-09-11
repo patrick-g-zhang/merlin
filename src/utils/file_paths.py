@@ -21,7 +21,7 @@ __author__ = 'pasindu@google.com (Pasindu De Silva)'
 import os
 from .utils import prepare_file_path_list
 from .utils import read_file_list
-
+import pdb
 
 class FilePaths(object):
   _NORM_INFO_FILE_NAME = 'norm_info_%s_%d_%s.dat'
@@ -45,7 +45,9 @@ class FilePaths(object):
   dur_file_list = []
   seq_dur_file_list = []
   nn_cmp_norm_file_list = []
-
+  ## this is for appending label feature 
+  out_label_file_list = []
+  
   def __init__(self, cfg):
     self.cfg = cfg
 
@@ -138,6 +140,8 @@ class FilePaths(object):
     self.out_feat_file_list = prepare_file_path_list(
         self.file_id_list, out_feat_dir, self.cfg.lab_ext)
 
+  # def set_additional_label_dir(self, ):
+
   def get_nn_cmp_file_list(self):
     return prepare_file_path_list(self.file_id_list, self.nn_cmp_dir,
                                   self.cfg.cmp_ext)
@@ -165,6 +169,7 @@ class FilePaths(object):
       test_file_list = self._prepare_test_label_file_path_list(
           self.cfg.test_synth_dir)
       self.binary_label_file_list = test_binary_file_list
+      # self.out_label_file_list = 
       self.nn_label_file_list = test_file_list
       self.nn_label_norm_file_list = test_file_list
     elif self.cfg.GenTestList:

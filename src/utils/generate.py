@@ -36,7 +36,7 @@ def read_binfile(filename, dim=60, dtype=np.float64):
     return  m_data
 
 def run_process(args,log=True):
-
+    # pdb.set_trace()
     logger = logging.getLogger("subprocess")
 
     # a convenience function instead of calling subprocess directly
@@ -111,12 +111,10 @@ def post_filter(mgc_file_in, mgc_file_out, mgc_dim, pf_coef, fw_coef, co_coef, f
     line = "echo 1 1 "
     for i in range(2, mgc_dim):
         line = line + str(pf_coef) + " "
+    # pdb.set_trace()
+    run_process('{line} | {x2x} +af > {weight}'.format(line=line, x2x=SPTK['X2X'], weight=os.path.join(gen_dir, 'weight')))
 
-    run_process('{line} | {x2x} +af > {weight}'
-                .format(line=line, x2x=SPTK['X2X'], weight=os.path.join(gen_dir, 'weight')))
-
-    run_process('{freqt} -m {order} -a {fw} -M {co} -A 0 < {mgc} | {c2acr} -m {co} -M 0 -l {fl} > {base_r0}'
-                .format(freqt=SPTK['FREQT'], order=mgc_dim-1, fw=fw_coef, co=co_coef, mgc=mgc_file_in, c2acr=SPTK['C2ACR'], fl=fl_coef, base_r0=mgc_file_in+'_r0'))
+    run_process('{freqt} -m {order} -a {fw} -M {co} -A 0 < {mgc} | {c2acr} -m {co} -M 0 -l {fl} > {base_r0}'.format(freqt=SPTK['FREQT'], order=mgc_dim-1, fw=fw_coef, co=co_coef, mgc=mgc_file_in, c2acr=SPTK['C2ACR'], fl=fl_coef, base_r0=mgc_file_in+'_r0'))
 
     run_process('{vopr} -m -n {order} < {mgc} {weight} | {freqt} -m {order} -a {fw} -M {co} -A 0 | {c2acr} -m {co} -M 0 -l {fl} > {base_p_r0}'
                 .format(vopr=SPTK['VOPR'], order=mgc_dim-1, mgc=mgc_file_in, weight=os.path.join(gen_dir, 'weight'),
@@ -206,6 +204,7 @@ def wavgen_straight_type_vocoder(gen_dir, file_id_list, cfg, logger):
         ### post-filtering
         if cfg.do_post_filtering:
             mgc_file_name = files['mgc']+'_p_mgc'
+            # pdb.set_trace()
             post_filter(files['mgc'], mgc_file_name, cfg.mgc_dim, pf_coef, fw_coef, co_coef, fl_coef, gen_dir, cfg)
 
         if cfg.vocoder_type == "STRAIGHT" and cfg.apply_GV:
@@ -265,6 +264,7 @@ def wavgen_straight_type_vocoder(gen_dir, file_id_list, cfg, logger):
 
             run_process('rm -f {ap} {sp} {f0}'.format(ap=files['ap'],sp=files['sp'],f0=files['f0']))
         elif cfg.vocoder_type == 'WORLD_PY':
+            logging.info("generate speech with py world, sampling rate is {0}".format(cfg.sr))
             # pdb.set_trace()
             lf0_file = files['lf0']
             lf0 = read_binfile(lf0_file,dim=1,dtype=np.float32)
@@ -274,15 +274,21 @@ def wavgen_straight_type_vocoder(gen_dir, file_id_list, cfg, logger):
             f0[zeros_index] = 0
             f0[nonzeros_index] = np.exp(lf0[nonzeros_index])
             f0 = f0.astype(np.float64)
-            bap = read_binfile(bap_file_name,dim=1,dtype=np.float32)
-            ap = pyworld.decode_aperiodicity(bap.astype(np.float64).reshape(-1,1), 16000, 1024)
+            if cfg.sr==16000:
+                bap_dim = 1
+            elif cfg.sr == 48000:
+                bap_dim = 5
+            else:
+                pass
+            bap = read_binfile(bap_file_name,dim=bap_dim,dtype=np.float32)
+            ap = pyworld.decode_aperiodicity(bap.astype(np.float64).reshape(-1,bap_dim), cfg.sr, cfg.fl)
             mc = read_binfile(mgc_file_name,dim=60,dtype=np.float32)
-            alpha = pysptk.util.mcepalpha(16000)
-            sp = pysptk.mc2sp(mc.astype(np.float64), fftlen=1024, alpha=alpha)
-            wav = pyworld.synthesize(f0,sp,ap, 16000,5)
+            alpha = pysptk.util.mcepalpha(cfg.sr)
+            sp = pysptk.mc2sp(mc.astype(np.float64), fftlen=cfg.fl, alpha=alpha)
+            wav = pyworld.synthesize(f0,sp,ap, cfg.sr,5)
             x2 = wav * 32768
             x2 = x2.astype(np.int16)
-            scipy.io.wavfile.write(files['wav'], 16000, x2)
+            scipy.io.wavfile.write(files['wav'], cfg.sr, x2)
             os.chdir(cur_dir)
    # pool = mp.Pool(mp.cpu_count())
    # pool.map(_synthesis, file_id_list)

@@ -83,22 +83,25 @@ class MLParameterGenerationFast(object):
         var_frames = np.zeros((frame_number, 3))
         # pdb.set_trace()
         for d in range(static_dimension):
-            var_frames[:, 0] = covariance[:, d]
-            var_frames[:, 1] = covariance[:, static_dimension+d]
-            var_frames[:, 2] = covariance[:, static_dimension*2+d]
-            mu_frames[:, 0] = features[:, d]
-            mu_frames[:, 1] = features[:, static_dimension+d]
-            mu_frames[:, 2] = features[:, static_dimension*2+d]
-            var_frames[0, 1] = 100000000000;
-            var_frames[0, 2] = 100000000000;
-            var_frames[frame_number-1, 1] = 100000000000;
-            var_frames[frame_number-1, 2] = 100000000000;
-            b_frames = mu_frames / var_frames
-            tau_frames = 1.0 / var_frames
+            try:
+                var_frames[:, 0] = covariance[:, d]
+                var_frames[:, 1] = covariance[:, static_dimension+d]
+                var_frames[:, 2] = covariance[:, static_dimension*2+d]
+                mu_frames[:, 0] = features[:, d]
+                mu_frames[:, 1] = features[:, static_dimension+d]
+                mu_frames[:, 2] = features[:, static_dimension*2+d]
+                var_frames[0, 1] = 100000000000
+                var_frames[0, 2] = 100000000000
+                var_frames[frame_number-1, 1] = 100000000000
+                var_frames[frame_number-1, 2] = 100000000000
+                b_frames = mu_frames / var_frames
+                tau_frames = 1.0 / var_frames
 
-            b, prec = self.build_poe(b_frames, tau_frames, win_mats)
-            mean_traj = bla.solveh(prec, b)
-            gen_parameter[0:frame_number, d] = mean_traj
+                b, prec = self.build_poe(b_frames, tau_frames, win_mats)
+                mean_traj = bla.solveh(prec, b)
+                gen_parameter[0:frame_number, d] = mean_traj
+            except IndexError:
+                pdb.set_trace()
         return  gen_parameter
 
     def get_static_features(inputs, num_windows, stream_sizes=[180, 3, 1, 3],
