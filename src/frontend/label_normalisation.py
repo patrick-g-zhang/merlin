@@ -1,6 +1,8 @@
-
 import os
-import numpy, re, sys
+import numpy
+import re
+import sys
+import scipy
 from multiprocessing import Pool
 from io_funcs.binary_io import BinaryIOCollection
 from .linguistic_base import LinguisticBase
@@ -673,11 +675,9 @@ class HTSLabelNormalisation(LabelNormalisation):
         mu3 = 1.0
 
         sigma = 0.4
-
-        cc_features[0, :] = mlab.normpdf(x1, mu1, sigma)
-        cc_features[1, :] = mlab.normpdf(x2, mu2, sigma)
-        cc_features[2, :] = mlab.normpdf(x3, mu3, sigma)
-
+        cc_features[0, :] = scipy.stats.norm.pdf(x1, mu1, sigma)
+        cc_features[1, :] = scipy.stats.norm.pdf(x2, mu2, sigma)
+        cc_features[2, :] = scipy.stats.norm.pdf(x3, mu3, sigma)
         return cc_features
 
     def extract_coarse_coding_features_relative(self, phone_duration):
