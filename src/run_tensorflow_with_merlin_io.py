@@ -1,12 +1,12 @@
 import os
 import sys
 from tensorflow_lib import data_utils
-import time
 import tensorflow as tf
 import pdb
 import numpy as np
 import logging
 import configuration
+from sklearn.utils import shuffle
 from tensorflow_lib.train import TrainTensorflowModels
 
 
@@ -180,10 +180,14 @@ class TensorflowClass(object):
         # num_list = [0]
         # self.inp_train_file_list = list(self.inp_train_file_list[i] for i in num_list)
         # self.out_train_file_list = list(self.out_train_file_list[i] for i in num_list)
+
+        # shuffle the training data
         train_x, train_y, train_flen = data_utils.read_data_from_file_list(self.inp_train_file_list,
                                                                            self.out_train_file_list,
                                                                            self.inp_dim, self.out_dim,
                                                                            sequential_training=True if self.sequential_training or self.encoder_decoder else False)
+
+        train_x, train_y = shuffle(train_x, train_y, random_state=1234)
         valid_x, valid_y, valid_flen = data_utils.read_data_from_file_list(self.inp_valid_file_list,
                                                                            self.out_valid_file_list,
                                                                            self.inp_dim, self.out_dim,
@@ -230,8 +234,7 @@ class TensorflowClass(object):
 
     def test_tensorflow_model(self):
 
-        #### load the data ####
-        # pdb.set_trace()
+        # load the data ####
         print('preparing test_x from input feature files...')
         test_x, test_flen = data_utils.read_test_data_from_file_list(
             self.inp_test_file_list, self.inp_dim)
@@ -243,7 +246,7 @@ class TensorflowClass(object):
             self.encoder_decoder_models.predict(
                 test_x, self.out_scaler, self.gen_test_file_list)
         else:
-            self.tensorflow_models.predict(
+            self.tensorflow_models.predict_utt(
                 test_x, self.out_scaler, self.gen_test_file_list, self.sequential_training)
 
     def main_function(self):

@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 import tensorflow as tf
 import numpy as np
-import random, os ,sys
+import random
+import os
+import sys
 from io_funcs.binary_io import BinaryIOCollection
 from tensorflow_lib.model import TensorflowModels, Encoder_Decoder_Models
 from tensorflow_lib import data_utils
 import pdb
 import logging
-import random
-import tfplot
+# import tfplot
 
 class TrainTensorflowModels(TensorflowModels):
     def __init__(self, n_in, hidden_layer_size, n_out, hidden_layer_type, model_dir,output_type='linear', dropout_rate=0.0, loss_function='mse', optimizer='adam', learning_rate=0.01, rnn_params=None):
@@ -33,10 +34,7 @@ class TrainTensorflowModels(TensorflowModels):
         """
             train utt embedding text to speech system
         """
-
         logger = logging.getLogger("train feedforward model")
-        seed = 12345
-        np.random.seed(seed)
         logger.info("The shape of train_x %s" % str(train_x.shape))
         # load data
         train_lin_x, train_lab_x = np.hsplit(train_x, np.array([-1]))
@@ -52,20 +50,12 @@ class TrainTensorflowModels(TensorflowModels):
                 # self.global_step = tf.get_collection("global_step")[0]
                 self.saver = tf.train.import_meta_graph(init_dnn_model_file)
                 print("loading the model parameters from {0}".format(init_dnn_model_file))
-                # is_training_batch = tf.get_collection("is_training_batch")[0]
-                if self.dropout_rate != 0.0:
-                    is_training_drop = tf.get_collection("is_training_drop")[0]
-                output_layer = tf.get_collection("output_layer")[0]
-                input_layer = tf.get_collection("input_layer")[0]
+                self.output_layer = tf.get_collection("output_layer")[0]
                 output_data = tf.get_collection("output_data")[0]
                 loss = tf.get_collection("loss")[0]
                 self.training_op = tf.get_collection("train_op")[0]
-                epoch_average_loss=tf.get_collection('epoch_average_loss')[0]
-
-                # with tf.name_scope("training_op"):
-                #     if self.optimizer == "adam":
-                # pdb.set_trace()
-                self.training_op = tf.train.AdamOptimizer(self.learning_rate,name='Adam_new').minimize(loss, global_step=self.global_step)
+                epoch_average_loss = tf.get_collection('epoch_average_loss')[0]
+                self.training_op = tf.train.AdamOptimizer(self.learning_rate, name='Adam_new').minimize(loss, global_step=self.global_step)
                 epoch_average_loss_summary = tf.get_collection("epoch_average_loss_summary")[0]
                 merged = tf.get_collection("merged")[0]
         else:
@@ -73,20 +63,16 @@ class TrainTensorflowModels(TensorflowModels):
                 self.learning_rate = tf.train.exponential_decay(self.initial_learning_rate,
                                                                 global_step=self.global_step, decay_steps=5000,
                                                                 decay_rate=0.99)
-                # is_training_batch = g.get_collection(name="is_training_batch")[0]
                 self.saver = tf.train.Saver()
-                # input_layer = g.get_collection(name="input_layer")[0]
-                # output_layer = g.get_collection(name="output_layer")[0]
                 output_data = tf.placeholder(dtype=tf.float32, shape=(None, self.n_out), name="output_data")
                 tf.add_to_collection(name='output_data', value=output_data)
-                # pdb.set_trace()
                 with tf.name_scope("loss"):
                     # consider more weight on mse
                     loss = 0.5 * tf.reduce_sum(tf.reduce_mean(tf.square(self.output_layer - output_data), axis=0), name="loss")
                     tf.add_to_collection(name='loss', value=loss)
-                # with tf.name_scope("training_op"):
-                    # if self.optimizer == "adam":
-                self.training_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss, global_step=self.global_step)
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    self.training_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss, global_step=self.global_step)
                 tf.add_to_collection(name="train_op", value=self.training_op)
                 tf.summary.scalar('mean_loss', loss)
                 tf.summary.scalar('learning_rate', self.learning_rate)
@@ -137,15 +123,15 @@ class TrainTensorflowModels(TensorflowModels):
                     _, batch_loss, summary = sess.run([self.training_op, loss, merged], feed_dict={self.input_lin_layer: x_lin_batch, self.utt_index_t: x_lab_batch, output_data: y_batch, self.is_training_batch: True})
                     train_writer.add_summary(summary, epoch * batch_num + iteration)
                     overall_training_loss += batch_loss
-               # logger.info("Epoch:%d Finishes, learning rate:%f, Training average loss:%5f,Test average loss:%5f" % (
-                 #   epoch + 1, self.learning_rate, 2 * overall_training_loss / (L_training * 187), 2 * overall_test_loss / (187 * L_test)))
+
                 learning_rate = sess.run(self.learning_rate)
                 train_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2 * overall_training_loss / (L_training * 187)})
                 train_writer.add_summary(train_epoch_loss, epoch + 1)
                 test_epoch_loss = sess.run(epoch_average_loss_summary, feed_dict={epoch_average_loss: 2 * overall_test_loss / (187 * L_test)})
                 test_writer.add_summary(test_epoch_loss, epoch + 1)
                 print("Epoch ", epoch + 1, "Finishes", "learning rate", learning_rate, "Training average loss:", 2 * overall_training_loss / (L_training * 187), "Test average loss", 2 * overall_test_loss / (187 * L_test))
-                self.saver.save(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
+                step = sess.run(self.global_step)
+                self.saver.save(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"), global_step=step)
                 print("The model parameters are saved")
 
 
@@ -270,14 +256,14 @@ class TrainTensorflowModels(TensorflowModels):
                 # pdb.set_trace()
                 output_layer_output = sess.run(output_layer, feed_dict={input_layer: valid_x, is_training_batch: False})
 
-                @tfplot.autowrap
-                def plot_scatter(x,y):
+                # @tfplot.autowrap
+                # def plot_scatter(x,y):
                     # NEVER use plt.XXX, or matplotlib.pyplot.
                     # Use tfplot.subplots() instead of plt.subplots() to avoid thread-safety issues.
-                    fig, ax = tfplot.subplots(figsize=(10,3 ))
-                    ax.plot(x, color='green')
-                    ax.plot(y, color='red')
-                    return fig
+                    # fig, ax = tfplot.subplots(figsize=(10,3 ))
+                    # ax.plot(x, color='green')
+                    # ax.plot(y, color='red')
+                    # return fig
               #  x = tf.constant(output_layer_output[0:1000,0], dtype=tf.float32)
              #   y = tf.constant(valid_y[0:1000,0],dtype=tf.float32)
                # ce=tf.expand_dims(plot_scatter(x,y),0)
@@ -544,6 +530,37 @@ class TrainTensorflowModels(TensorflowModels):
                             valid_writer.add_summary(valid_summary,gs)
                             logger.info("After epoch {}, training loss is {}, validation loss is {}, global step is {}".format(str(epoch), str(batch_loss),str(valid_loss),str(gs)))
                     self.saver.save(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
+
+    def predict_utt(self, test_x, out_scaler, gen_test_file_list, sequential_training=False, stateful=False):
+        """
+            predict the results with given model
+        """
+        logger = logging.getLogger("predict model")
+        logger.info("generating features on held-out test data...")
+        io_funcs = BinaryIOCollection()
+        test_id_list = list(test_x)
+        # test_id_list.sort()
+        # gen_test_file_list.sort()
+        test_file_number = len(test_id_list)
+
+        # reconstructe a graph
+        self.define_feedforward_model_utt()
+        with self.graph.as_default():
+            new_saver = tf.train.Saver()
+            with tf.Session() as sess:
+                sess.run(tf.global_variables_initializer())
+                print("loading the model parameters...")
+                new_saver.restore(sess, os.path.join(self.ckpt_dir, "mymodel.ckpt"))
+                print("The model parameters are successfully restored")
+                for utt_index in range(test_file_number):
+                    gen_test_file_name = gen_test_file_list[utt_index]
+                    temp_test_x = test_x[test_id_list[utt_index]]
+                    temp_test_lin_x, temp_test_lab_x = np.hsplit(temp_test_x, np.array([-1]))
+                    y_predict = sess.run(self.output_layer, feed_dict={self.input_lin_layer: temp_test_lin_x, self.utt_index_t: temp_test_lab_x, self.is_training_batch: True})
+                    data_utils.denorm_data(y_predict, out_scaler)
+                    io_funcs.array_to_binary_file(y_predict, gen_test_file_name)
+                    data_utils.drawProgressBar(utt_index + 1, test_file_number)
+            sys.stdout.write("\n")
 
 
     def predict(self, test_x, out_scaler, gen_test_file_list, sequential_training=False, stateful=False):

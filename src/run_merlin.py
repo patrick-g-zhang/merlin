@@ -497,7 +497,6 @@ def main_function(cfg):
             gen_dir = cfg.test_synth_dir
 
     if cfg.DNNGEN:
-        pdb.set_trace()
         logger.info('generating from DNN')
         if not os.path.exists(gen_dir):
             os.mkdir(gen_dir)

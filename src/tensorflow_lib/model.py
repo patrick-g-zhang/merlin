@@ -42,11 +42,12 @@ class TensorflowModels(object):
         """
             utterance index embedding
             last dim of input should be index
+            TO DO LIST:
+            embedding matrix size is fixed not fit to data
         """
         layer_list = []
         with self.graph.as_default() as g:
             self.global_step = tf.Variable(0, trainable=False)
-            g.add_to_collection(name='global_step', value=self.global_step)
             self.is_training_batch = tf.placeholder(tf.bool, shape=(), name="is_training_batch")
             # bn_params={"is_training":is_training_batch,"decay":0.99,"updates_collections":None}
             # g.add_to_collection("is_training_batch", is_training_batch)
@@ -55,32 +56,33 @@ class TensorflowModels(object):
                 # shape (N, 319)
                 self.input_lin_layer = tf.placeholder(dtype=tf.float32, shape=(None, self.n_in), name="input_layer")
                 # embedding shape (UTT, 10)
-                utt_embeddings = tf.get_variable("utt-embeddings", [1000, 10], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=0.5))
+                self.utt_embeddings = tf.get_variable("utt-embeddings", [1000, 10], dtype=tf.float32, initializer=tf.truncated_normal_initializer(stddev=0.5))
                 # label (N, 1)
                 self.utt_index_t = tf.placeholder(dtype=tf.int32, shape=(None, 1), name="utt_index")
 
                 # embedding result (N, 1, 10)
-                embedding_utt = tf.nn.embedding_lookup(utt_embeddings, self.utt_index_t)
+                embedding_utt = tf.nn.embedding_lookup(self.utt_embeddings, self.utt_index_t)
                 # concatenate embedding result and linguistic feature , shape (N, 329)
                 # shape (N, 10)
                 embedding_utt = tf.squeeze(embedding_utt, axis=-2)
-                input_layer = tf.concat([self.input_lin_layer, embedding_utt], 1)
+                self.input_layer = tf.concat([self.input_lin_layer, embedding_utt], 1)
 
                 if self.dropout_rate != 0.0:
                     print("Using dropout to avoid overfitting and the dropout rate is", self.dropout_rate)
                     is_training_drop = tf.placeholder(dtype=tf.bool, shape=(), name="is_training_drop")
-                    input_layer_drop = dropout(input_layer, self.dropout_rate, is_training=is_training_drop)
+                    input_layer_drop = dropout(self.input_layer, self.dropout_rate, is_training=is_training_drop)
                     layer_list.append(input_layer_drop)
                     g.add_to_collection(name="is_training_drop", value=is_training_drop)
                 else:
-                    layer_list.append(input_layer)
-            g.add_to_collection("input_layer", layer_list[0])
+                    layer_list.append(self.input_layer)
+
+            # hidden layer
             for i in range(len(self.hidden_layer_size)):
-                with tf.name_scope("hidden_layer_"+ str(i+1)):
+                with tf.name_scope("hidden_layer_" + str(i + 1)):
                     if self.dropout_rate != 0.0:
-                        last_layer=layer_list[-1]
+                        last_layer = layer_list[-1]
                         if self.hidden_layer_type[i] == "tanh":
-                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=None)
+                            new_layer=fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=None)
                             new_layer = tf.contrib.layers.batch_norm(new_layer,is_training=self.is_training_batch)
                             new_layer = tf.nn.tanh(new_layer)
                         if self.hidden_layer_type[i]=="sigmoid":
@@ -97,12 +99,13 @@ class TensorflowModels(object):
                         if self.hidden_layer_type[i] == "tanh":
                             new_layer = fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=None)
                             new_layer = tf.nn.tanh(new_layer)
-                        if self.hidden_layer_type[i]=="sigmoid":
-                            new_layer = fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.sigmoid)
-                        if self.hidden_layer_type[i]=="relu":
-                            new_layer = fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.relu)
-                        if self.hidden_layer_type[i]=="selu":
-                            new_layer=fully_connected(last_layer,self.hidden_layer_size[i],activation_fn=tf.nn.selu)
+                            tf.summary.histogram("%s th layer activation" % str(i), new_layer)
+                        if self.hidden_layer_type[i] == "sigmoid":
+                            new_layer = fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=tf.nn.sigmoid)
+                        if self.hidden_layer_type[i] == "relu":
+                            new_layer = fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=tf.nn.relu)
+                        if self.hidden_layer_type[i] == "selu":
+                            new_layer = fully_connected(last_layer, self.hidden_layer_size[i], activation_fn=tf.nn.selu)
                         layer_list.append(new_layer)
 
             with tf.name_scope("output_layer"):
@@ -135,6 +138,7 @@ class TensorflowModels(object):
                 else:
                     layer_list.append(input_layer)
             g.add_to_collection("input_layer",layer_list[0])
+           
             for i in range(len(self.hidden_layer_size)):
                 with tf.name_scope("hidden_layer_"+str(i+1)):
                     if self.dropout_rate!=0.0:
